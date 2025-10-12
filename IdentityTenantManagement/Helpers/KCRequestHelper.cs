@@ -1,10 +1,11 @@
 using System.Net.Http.Headers;
 using System.Text;
+using IdentityTenantManagement.Exceptions;
 using IdentityTenantManagement.Helpers.ContentBuilders;
-using IdentityTenantManagement.Models.Keycloak; 
+using IdentityTenantManagement.Models.Keycloak;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq; 
+using Newtonsoft.Json.Linq;
 
 namespace IdentityTenantManagement.Helpers;
 
@@ -41,15 +42,18 @@ public class KCRequestHelper : IKCRequestHelper
  
 
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
-    { 
+    {
         var response = await _httpClient.SendAsync(request);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             var content = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Keycloak returned {response.StatusCode}: {content}");
+            throw new KeycloakException(
+                $"Keycloak API request failed: {response.ReasonPhrase}",
+                response.StatusCode,
+                content);
         }
-        
+
         return response;
     }
 
@@ -65,7 +69,15 @@ public class KCRequestHelper : IKCRequestHelper
         });
 
         var response = await _httpClient.PostAsync(tokenEndpoint, content);
-        response.EnsureSuccessStatusCode();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new KeycloakException(
+                "Failed to obtain access token from Keycloak",
+                response.StatusCode,
+                errorContent);
+        }
 
         var responseBody = await response.Content.ReadAsStringAsync();
         var tokenResponse = JObject.Parse(responseBody);

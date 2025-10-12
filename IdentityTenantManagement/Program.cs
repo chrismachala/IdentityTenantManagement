@@ -1,5 +1,6 @@
 using IdentityTenantManagement.EFCore;
 using IdentityTenantManagement.Helpers;
+using IdentityTenantManagement.Middleware;
 using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Services;
 using IdentityTenantManagement.Services.KeycloakServices;
@@ -11,6 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add exception handling
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 // dev env adds user secrets
 //builder.Configuration.AddUserSecrets<Program>(true);
 
@@ -37,6 +42,8 @@ app.UseSwaggerUI(options =>
 }); 
 
 // Configure the HTTP request pipeline
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
