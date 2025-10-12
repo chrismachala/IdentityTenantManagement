@@ -1,5 +1,6 @@
 using IdentityTenantManagement.Helpers;
 using IdentityTenantManagement.Models.Keycloak;
+using IdentityTenantManagement.Repositories;
 using IdentityTenantManagement.Services.KeycloakServices;
 
 namespace IdentityTenantManagement.Services;
@@ -19,6 +20,11 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        // Register repositories
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
+
+        // Register application services
         services.AddScoped<IOnboardingService, OnboardingService>();
         // Add other core business services here
 

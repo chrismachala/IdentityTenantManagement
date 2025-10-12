@@ -1,6 +1,7 @@
 using IdentityTenantManagement.EFCore;
 using IdentityTenantManagement.Models.Onboarding;
 using IdentityTenantManagement.Models.Organisations;
+using IdentityTenantManagement.Repositories;
 using IdentityTenantManagement.Services.KeycloakServices;
 using IO.Swagger.Model;
 
@@ -15,16 +16,19 @@ public class OnboardingService : IOnboardingService
 {
     private readonly IKCOrganisationService _kcOrganisationService;
     private readonly IKCUserService _kcUserService;
-    private readonly IdentityTenantManagementContext _context;
+    private readonly IUserRepository _userRepository;
+    private readonly ITenantRepository _tenantRepository;
 
     public OnboardingService(
         IKCOrganisationService kcOrganisationService,
         IKCUserService kcUserService,
-        IdentityTenantManagementContext context)
+        IUserRepository userRepository,
+        ITenantRepository tenantRepository)
     {
         _kcOrganisationService = kcOrganisationService;
         _kcUserService = kcUserService;
-        _context = context;
+        _userRepository = userRepository;
+        _tenantRepository = tenantRepository;
     }
 
     public async Task OnboardOrganisationAsync(TenantUserOnboardingModel model)
@@ -63,7 +67,7 @@ public class OnboardingService : IOnboardingService
             SLastName = userRepresentation.LastName
         };
 
-        _context.Users.Add(user);
+        await _userRepository.AddAsync(user);
 
         var tenant = new Tenant
         {
@@ -72,8 +76,6 @@ public class OnboardingService : IOnboardingService
             SName = organizationRepresentation.Name
         };
 
-        _context.Tenants.Add(tenant);
-
-        await _context.SaveChangesAsync();
+        await _tenantRepository.AddAsync(tenant);
     }
 }
