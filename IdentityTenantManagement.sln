@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityTenantManagement", "IdentityTenantManagement\IdentityTenantManagement.csproj", "{72312926-E37B-46DF-B5E0-8760FC474C38}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityTenantManagement.Tests", "IdentityTenantManagement.Tests\IdentityTenantManagement.Tests.csproj", "{6A99F707-F1AB-41EA-A2F1-2461C78FAD96}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{72312926-E37B-46DF-B5E0-8760FC474C38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72312926-E37B-46DF-B5E0-8760FC474C38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72312926-E37B-46DF-B5E0-8760FC474C38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72312926-E37B-46DF-B5E0-8760FC474C38}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A99F707-F1AB-41EA-A2F1-2461C78FAD96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A99F707-F1AB-41EA-A2F1-2461C78FAD96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A99F707-F1AB-41EA-A2F1-2461C78FAD96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A99F707-F1AB-41EA-A2F1-2461C78FAD96}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

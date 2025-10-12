@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "KiPqsceuj/kE/Ori477fZA1hTHG9Ssq+d8pZ/Ev/I8Y=",
+  "Source": "IdentityTenantManagement",
+  "BasePath": "_content/IdentityTenantManagement",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
