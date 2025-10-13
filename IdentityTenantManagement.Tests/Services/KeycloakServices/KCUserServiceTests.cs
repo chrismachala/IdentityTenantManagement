@@ -261,4 +261,98 @@ public class KCUserServiceTests
     }
 
     #endregion
+
+    #region DeleteUserAsync Tests
+
+    [Test]
+    public async Task DeleteUserAsync_DeletesUserSuccessfully_WhenUserExists()
+    {
+        // Arrange
+        var userId = "user-123";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users/{userId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+        var httpResponse = new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ReturnsAsync(httpResponse);
+
+        // Act
+        await _service.DeleteUserAsync(userId);
+
+        // Assert
+        _mockRequestHelper.Verify(h =>
+            h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()),
+            Times.Once);
+        _mockRequestHelper.Verify(h => h.SendAsync(It.IsAny<HttpRequestMessage>()), Times.Once);
+    }
+
+    [Test]
+    public void DeleteUserAsync_ThrowsKeycloakException_WhenUserNotFound()
+    {
+        // Arrange
+        var userId = "nonexistent-user";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users/{userId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("User not found", HttpStatusCode.NotFound, "Not found"));
+
+        // Act & Assert
+        Assert.ThrowsAsync<KeycloakException>(() => _service.DeleteUserAsync(userId));
+    }
+
+    [Test]
+    public void DeleteUserAsync_ThrowsKeycloakException_WhenRequestFails()
+    {
+        // Arrange
+        var userId = "user-123";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users/{userId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Internal server error", HttpStatusCode.InternalServerError, "Error"));
+
+        // Act & Assert
+        Assert.ThrowsAsync<KeycloakException>(() => _service.DeleteUserAsync(userId));
+    }
+
+    [Test]
+    [TestCase("")] 
+    public void DeleteUserAsync_ThrowsException_WhenUserIdIsInvalid(string userId)
+    {
+        // Arrange
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users/{userId}";
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, It.IsAny<string>(), null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Bad request", HttpStatusCode.BadRequest, "Invalid user ID"));
+
+        // Act & Assert
+        Assert.ThrowsAsync<KeycloakException>(() => _service.DeleteUserAsync(userId));
+    }
+
+    #endregion
 }

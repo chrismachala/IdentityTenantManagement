@@ -297,4 +297,226 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
     }
 
     #endregion
+
+    #region DeleteOrganisationAsync Tests
+
+    [Test]
+    public async Task DeleteOrganisationAsync_DeletesOrganisationSuccessfully_WhenOrganisationExists()
+    {
+        // Arrange
+        var orgId = "org-123";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+        var httpResponse = new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ReturnsAsync(httpResponse);
+
+        // Act
+        await _service.DeleteOrganisationAsync(orgId);
+
+        // Assert
+        _mockRequestHelper.Verify(h =>
+            h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()),
+            Times.Once);
+        _mockRequestHelper.Verify(h => h.SendAsync(It.IsAny<HttpRequestMessage>()), Times.Once);
+    }
+
+    [Test]
+    public void DeleteOrganisationAsync_ThrowsKeycloakException_WhenOrganisationNotFound()
+    {
+        // Arrange
+        var orgId = "nonexistent-org";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Organisation not found", HttpStatusCode.NotFound, "Not found"));
+
+        // Act & Assert
+        Assert.That(async () => await _service.DeleteOrganisationAsync(orgId),
+            Throws.TypeOf<KeycloakException>());
+    }
+
+    [Test]
+    public void DeleteOrganisationAsync_ThrowsKeycloakException_WhenRequestFails()
+    {
+        // Arrange
+        var orgId = "org-123";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Internal server error", HttpStatusCode.InternalServerError, "Error"));
+
+        // Act & Assert
+        Assert.That(async () => await _service.DeleteOrganisationAsync(orgId),
+            Throws.TypeOf<KeycloakException>());
+    }
+
+    [Test]
+    public void DeleteOrganisationAsync_ThrowsKeycloakException_WhenOrganisationHasMembers()
+    {
+        // Arrange
+        var orgId = "org-with-members";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Cannot delete organisation with members", HttpStatusCode.Conflict, "Conflict"));
+
+        // Act & Assert
+        Assert.That(async () => await _service.DeleteOrganisationAsync(orgId),
+            Throws.TypeOf<KeycloakException>());
+    }
+
+    #endregion
+
+    #region RemoveUserFromOrganisationAsync Tests
+
+    [Test]
+    public async Task RemoveUserFromOrganisationAsync_RemovesUserSuccessfully_WhenValid()
+    {
+        // Arrange
+        var userId = "user-123";
+        var orgId = "org-456";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}/members/{userId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+        var httpResponse = new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ReturnsAsync(httpResponse);
+
+        // Act
+        await _service.RemoveUserFromOrganisationAsync(userId, orgId);
+
+        // Assert
+        _mockRequestHelper.Verify(h =>
+            h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()),
+            Times.Once);
+        _mockRequestHelper.Verify(h => h.SendAsync(It.IsAny<HttpRequestMessage>()), Times.Once);
+    }
+
+    [Test]
+    public void RemoveUserFromOrganisationAsync_ThrowsKeycloakException_WhenUserNotInOrganisation()
+    {
+        // Arrange
+        var userId = "user-123";
+        var orgId = "org-456";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}/members/{userId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("User not a member of organisation", HttpStatusCode.NotFound, "Not found"));
+
+        // Act & Assert
+        Assert.That(async () => await _service.RemoveUserFromOrganisationAsync(userId, orgId),
+            Throws.TypeOf<KeycloakException>());
+    }
+
+    [Test]
+    public void RemoveUserFromOrganisationAsync_ThrowsKeycloakException_WhenOrganisationNotFound()
+    {
+        // Arrange
+        var userId = "user-123";
+        var orgId = "nonexistent-org";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}/members/{userId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Organisation not found", HttpStatusCode.NotFound, "Not found"));
+
+        // Act & Assert
+        Assert.That(async () => await _service.RemoveUserFromOrganisationAsync(userId, orgId),
+            Throws.TypeOf<KeycloakException>());
+    }
+
+    [Test]
+    public void RemoveUserFromOrganisationAsync_ThrowsKeycloakException_WhenRequestFails()
+    {
+        // Arrange
+        var userId = "user-123";
+        var orgId = "org-456";
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}/members/{userId}";
+
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, endpoint, null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Internal server error", HttpStatusCode.InternalServerError, "Error"));
+
+        // Act & Assert
+        Assert.That(async () => await _service.RemoveUserFromOrganisationAsync(userId, orgId),
+            Throws.TypeOf<KeycloakException>());
+    }
+
+    [Test]
+    [TestCase("", "org-123")] 
+    [TestCase("user-123", "")] 
+    public void RemoveUserFromOrganisationAsync_ThrowsException_WhenParametersAreInvalid(string userId, string orgId)
+    {
+        // Arrange
+        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{orgId}/members/{userId}";
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Delete, endpoint);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Delete, It.IsAny<string>(), null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Bad request", HttpStatusCode.BadRequest, "Invalid parameters"));
+
+        // Act & Assert
+        Assert.That(async () => await _service.RemoveUserFromOrganisationAsync(userId, orgId),
+            Throws.TypeOf<KeycloakException>());
+    }
+
+    #endregion
 }
