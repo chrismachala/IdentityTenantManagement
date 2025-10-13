@@ -12,6 +12,7 @@ using IdentityTenantManagement.Services;
 using IdentityTenantManagement.Services.KeycloakServices;
 using IO.Swagger.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace IdentityTenantManagement.Tests.Services
@@ -22,6 +23,7 @@ namespace IdentityTenantManagement.Tests.Services
         private Mock<IKCOrganisationService> _mockOrgService;
         private Mock<IKCUserService> _mockUserService;
         private Mock<IUnitOfWork> _mockUnitOfWork;
+        private Mock<ILogger<OnboardingService>> _mockLogger;
         private OnboardingService _service;
 
         [SetUp]
@@ -30,11 +32,13 @@ namespace IdentityTenantManagement.Tests.Services
             _mockOrgService = new Mock<IKCOrganisationService>();
             _mockUserService = new Mock<IKCUserService>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
+            _mockLogger = new Mock<ILogger<OnboardingService>>();
 
             _service = new OnboardingService(
                 _mockOrgService.Object,
-                _mockUserService.Object, 
-                _mockUnitOfWork.Object
+                _mockUserService.Object,
+                _mockUnitOfWork.Object,
+                _mockLogger.Object
             );
         }
 
@@ -408,6 +412,190 @@ namespace IdentityTenantManagement.Tests.Services
             _mockUnitOfWork.Verify(x => x.Tenants.AddAsync(It.Is<Tenant>(t =>
                 t.SDomain == "primary.com"
             )), Times.Once);
+        }
+
+        #endregion
+
+        #region Saga Compensating Transaction Tests
+
+        [Test]
+        public async Task OnboardOrganisationAsync_DeletesCreatedUser_WhenOrganisationCreationFails()
+        {
+            // Arrange
+            var userId = Guid.NewGuid().ToString();
+            var model = new TenantUserOnboardingModel
+            {
+                CreateUserModel = new CreateUserModel { Email = "user@example.com" },
+                CreateTenantModel = new CreateTenantModel { Domain = "example.com" }
+            };
+
+            var userRep = new UserRepresentation(userId) { Email = "user@example.com" };
+
+            _mockUserService.Setup(x => x.CreateUserAsync(It.IsAny<CreateUserModel>())).Returns(Task.CompletedTask);
+            _mockUserService.Setup(x => x.GetUserByEmailAsync("user@example.com")).ReturnsAsync(userRep);
+            _mockUserService.Setup(x => x.DeleteUserAsync(userId)).Returns(Task.CompletedTask);
+
+            _mockOrgService
+                .Setup(x => x.CreateOrgAsync(It.IsAny<CreateTenantModel>()))
+                .ThrowsAsync(new Exception("Organisation creation failed"));
+
+            // Act & Assert
+            Assert.That(async () => await _service.OnboardOrganisationAsync(model),
+                Throws.Exception.With.Message.EqualTo("Organisation creation failed"));
+
+            // Verify compensating transaction
+            _mockUserService.Verify(x => x.DeleteUserAsync(userId), Times.Once);
+        }
+
+        [Test]
+        public async Task OnboardOrganisationAsync_DeletesUserAndOrg_WhenLinkingFails()
+        {
+            // Arrange
+            var userId = Guid.NewGuid().ToString();
+            var orgId = Guid.NewGuid().ToString();
+
+            var model = new TenantUserOnboardingModel
+            {
+                CreateUserModel = new CreateUserModel { Email = "user@example.com" },
+                CreateTenantModel = new CreateTenantModel { Domain = "example.com" }
+            };
+
+            var userRep = new UserRepresentation(userId) { Email = "user@example.com" };
+            var orgRep = new OrganizationRepresentation
+            {
+                Id = orgId,
+                Domains = new List<OrganizationDomainRepresentation>
+                {
+                    new OrganizationDomainRepresentation("example.com")
+                }
+            };
+
+            _mockUserService.Setup(x => x.CreateUserAsync(It.IsAny<CreateUserModel>())).Returns(Task.CompletedTask);
+            _mockUserService.Setup(x => x.GetUserByEmailAsync("user@example.com")).ReturnsAsync(userRep);
+            _mockUserService.Setup(x => x.DeleteUserAsync(userId)).Returns(Task.CompletedTask);
+
+            _mockOrgService.Setup(x => x.CreateOrgAsync(It.IsAny<CreateTenantModel>())).Returns(Task.CompletedTask);
+            _mockOrgService.Setup(x => x.GetOrganisationByDomain("example.com")).ReturnsAsync(orgRep);
+            _mockOrgService.Setup(x => x.DeleteOrganisationAsync(orgId)).Returns(Task.CompletedTask);
+            _mockOrgService
+                .Setup(x => x.AddUserToOrganisationAsync(It.IsAny<UserTenantModel>()))
+                .ThrowsAsync(new Exception("Failed to add user to organisation"));
+
+            // Act & Assert
+            Assert.That(async () => await _service.OnboardOrganisationAsync(model),
+                Throws.Exception.With.Message.EqualTo("Failed to add user to organisation"));
+
+            // Verify compensating transactions in reverse order
+            _mockOrgService.Verify(x => x.DeleteOrganisationAsync(orgId), Times.Once);
+            _mockUserService.Verify(x => x.DeleteUserAsync(userId), Times.Once);
+        }
+
+        [Test]
+        public async Task OnboardOrganisationAsync_RollsBackAllChanges_WhenDatabaseCommitFails()
+        {
+            // Arrange
+            var userId = Guid.NewGuid().ToString();
+            var orgId = Guid.NewGuid().ToString();
+
+            var model = new TenantUserOnboardingModel
+            {
+                CreateUserModel = new CreateUserModel { Email = "user@example.com" },
+                CreateTenantModel = new CreateTenantModel { Domain = "example.com" }
+            };
+
+            var userRep = new UserRepresentation(userId) { Email = "user@example.com" };
+            var orgRep = new OrganizationRepresentation
+            {
+                Id = orgId,
+                Domains = new List<OrganizationDomainRepresentation>
+                {
+                    new OrganizationDomainRepresentation("example.com")
+                }
+            };
+
+            _mockUserService.Setup(x => x.CreateUserAsync(It.IsAny<CreateUserModel>())).Returns(Task.CompletedTask);
+            _mockUserService.Setup(x => x.GetUserByEmailAsync("user@example.com")).ReturnsAsync(userRep);
+            _mockUserService.Setup(x => x.DeleteUserAsync(userId)).Returns(Task.CompletedTask);
+
+            _mockOrgService.Setup(x => x.CreateOrgAsync(It.IsAny<CreateTenantModel>())).Returns(Task.CompletedTask);
+            _mockOrgService.Setup(x => x.GetOrganisationByDomain("example.com")).ReturnsAsync(orgRep);
+            _mockOrgService.Setup(x => x.AddUserToOrganisationAsync(It.IsAny<UserTenantModel>())).Returns(Task.CompletedTask);
+            _mockOrgService.Setup(x => x.RemoveUserFromOrganisationAsync(userId, orgId)).Returns(Task.CompletedTask);
+            _mockOrgService.Setup(x => x.DeleteOrganisationAsync(orgId)).Returns(Task.CompletedTask);
+
+            _mockUnitOfWork.Setup(x => x.Users.AddAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.Tenants.AddAsync(It.IsAny<Tenant>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>(null!));
+            _mockUnitOfWork.Setup(x => x.RollbackAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork
+                .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new DbUpdateException("Database commit failed"));
+
+            // Act & Assert
+            Assert.That(async () => await _service.OnboardOrganisationAsync(model),
+                Throws.TypeOf<DbUpdateException>());
+
+            // Verify all compensating transactions were called
+            _mockUnitOfWork.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _mockOrgService.Verify(x => x.RemoveUserFromOrganisationAsync(userId, orgId), Times.Once);
+            _mockOrgService.Verify(x => x.DeleteOrganisationAsync(orgId), Times.Once);
+            _mockUserService.Verify(x => x.DeleteUserAsync(userId), Times.Once);
+        }
+
+        [Test]
+        public async Task OnboardOrganisationAsync_ContinuesCompensatingTransactions_EvenWhenSomeFail()
+        {
+            // Arrange
+            var userId = Guid.NewGuid().ToString();
+            var orgId = Guid.NewGuid().ToString();
+
+            var model = new TenantUserOnboardingModel
+            {
+                CreateUserModel = new CreateUserModel { Email = "user@example.com" },
+                CreateTenantModel = new CreateTenantModel { Domain = "example.com" }
+            };
+
+            var userRep = new UserRepresentation(userId) { Email = "user@example.com" };
+            var orgRep = new OrganizationRepresentation
+            {
+                Id = orgId,
+                Domains = new List<OrganizationDomainRepresentation>
+                {
+                    new OrganizationDomainRepresentation("example.com")
+                }
+            };
+
+            _mockUserService.Setup(x => x.CreateUserAsync(It.IsAny<CreateUserModel>())).Returns(Task.CompletedTask);
+            _mockUserService.Setup(x => x.GetUserByEmailAsync("user@example.com")).ReturnsAsync(userRep);
+            _mockUserService.Setup(x => x.DeleteUserAsync(userId)).Returns(Task.CompletedTask);
+
+            _mockOrgService.Setup(x => x.CreateOrgAsync(It.IsAny<CreateTenantModel>())).Returns(Task.CompletedTask);
+            _mockOrgService.Setup(x => x.GetOrganisationByDomain("example.com")).ReturnsAsync(orgRep);
+            _mockOrgService.Setup(x => x.AddUserToOrganisationAsync(It.IsAny<UserTenantModel>())).Returns(Task.CompletedTask);
+            _mockOrgService.Setup(x => x.DeleteOrganisationAsync(orgId)).Returns(Task.CompletedTask);
+
+            // RemoveUser fails, but other compensations should still execute
+            _mockOrgService
+                .Setup(x => x.RemoveUserFromOrganisationAsync(userId, orgId))
+                .ThrowsAsync(new Exception("Failed to remove user"));
+
+            _mockUnitOfWork.Setup(x => x.Users.AddAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.Tenants.AddAsync(It.IsAny<Tenant>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>(null!));
+            _mockUnitOfWork.Setup(x => x.RollbackAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork
+                .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new DbUpdateException("Database commit failed"));
+
+            // Act & Assert
+            Assert.That(async () => await _service.OnboardOrganisationAsync(model),
+                Throws.TypeOf<DbUpdateException>());
+
+            // Verify all compensating transactions were attempted despite failure
+            _mockUnitOfWork.Verify(x => x.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _mockOrgService.Verify(x => x.RemoveUserFromOrganisationAsync(userId, orgId), Times.Once);
+            _mockOrgService.Verify(x => x.DeleteOrganisationAsync(orgId), Times.Once);
+            _mockUserService.Verify(x => x.DeleteUserAsync(userId), Times.Once);
         }
 
         #endregion
