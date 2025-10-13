@@ -7,6 +7,7 @@ using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Models.Users;
 using IdentityTenantManagement.Services.KeycloakServices;
 using IO.Swagger.Model;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -19,6 +20,7 @@ public class KCUserServiceTests
     private Mock<IKCRequestHelper> _mockRequestHelper;
     private KCUserService _service;
     private KeycloakConfig _config;
+    private Mock<ILogger<KCUserService>> _kcUserServiceLogger;
 
     [SetUp]
     public void Setup()
@@ -33,8 +35,10 @@ public class KCUserServiceTests
         _mockOptions.Setup(x => x.Value).Returns(_config);
 
         _mockRequestHelper = new Mock<IKCRequestHelper>();
+        
+        _kcUserServiceLogger =  new Mock<ILogger<KCUserService>>();
 
-        _service = new KCUserService(_mockOptions.Object, _mockRequestHelper.Object);
+        _service = new KCUserService(_mockOptions.Object, _mockRequestHelper.Object,  _kcUserServiceLogger.Object);
     }
 
     #region GetUserByEmailAsync Tests

@@ -1,8 +1,7 @@
-using System.Text.Json;
 using IdentityTenantManagement.Helpers;
-using IdentityTenantManagement.Helpers.ContentBuilders;
 using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Models.Users;
+using IdentityTenantManagement.Services.KeycloakServices.Base;
 using IO.Swagger.Model;
 using Microsoft.Extensions.Options;
 
@@ -12,38 +11,39 @@ public interface IKCUserService
 {
     Task CreateUserAsync(CreateUserModel model);
     Task<UserRepresentation> GetUserByEmailAsync(string email);
+    Task DeleteUserAsync(string userId);
 }
 
-public class KCUserService(IOptions<KeycloakConfig> config, IKCRequestHelper requestHelper) : IKCUserService
+public class KCUserService : KeycloakServiceBase, IKCUserService
 {
-    private readonly KeycloakConfig _config = config.Value;
+    public KCUserService(
+        IOptions<KeycloakConfig> config,
+        IKCRequestHelper requestHelper,
+        ILogger<KCUserService> logger)
+        : base(config, requestHelper, logger)
+    {
+    }
 
     public async Task<UserRepresentation> GetUserByEmailAsync(string emailAddress)
-    { 
-        string query = HttpQueryCreator.BuildQueryForUserSearchByEmail(emailAddress);
-        string endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users{query}";
- 
-        Task<HttpRequestMessage> request = requestHelper.CreateHttpRequestMessage(HttpMethod.Get, endpoint,null, new JsonContentBuilder());
-        HttpResponseMessage response = await requestHelper.SendAsync(await request);
-        response.EnsureSuccessStatusCode();
-        
-        string json = await response.Content.ReadAsStringAsync();
+    {
+        Logger.LogInformation("Getting user by email: {Email}", emailAddress);
 
-        List<UserRepresentation>? users = JsonSerializer.Deserialize<List<UserRepresentation>>(json,
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+        var query = HttpQueryCreator.BuildQueryForUserSearchByEmail(emailAddress);
+        var endpoint = BuildEndpoint($"users{query}");
 
-        return users.First()??null;
+        var users = await GetAsync<List<UserRepresentation>>(endpoint);
+
+        return GetFirstOrThrow(users, "User", $"email={emailAddress}");
     }
-     
+
     public async Task CreateUserAsync(CreateUserModel userModel)
     {
-        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users";
-        
+        Logger.LogInformation("Creating user: {Email}", userModel.Email);
+
+        var endpoint = BuildEndpoint("users");
+
         var user = new UserRepresentation
-        {   
+        {
             Username = userModel.UserName,
             Email = userModel.Email,
             FirstName = userModel.FirstName,
@@ -60,11 +60,19 @@ public class KCUserService(IOptions<KeycloakConfig> config, IKCRequestHelper req
                 }
             },
             RequiredActions = new List<string>()
-        }; 
-        var request = requestHelper.CreateHttpRequestMessage(HttpMethod.Post, endpoint, user, new JsonContentBuilder());
-        var response = await requestHelper.SendAsync(await request);
-      
-        response.EnsureSuccessStatusCode();
-  
+        };
+
+        await PostJsonAsync(endpoint, user);
+        Logger.LogInformation("Successfully created user: {Email}", userModel.Email);
+    }
+
+    public async Task DeleteUserAsync(string userId)
+    {
+        Logger.LogWarning("Deleting user: {UserId}", userId);
+
+        var endpoint = BuildEndpoint($"users/{userId}");
+        await DeleteAsync(endpoint);
+
+        Logger.LogInformation("Successfully deleted user: {UserId}", userId);
     } 
 }

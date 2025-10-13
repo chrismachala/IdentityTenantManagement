@@ -1,12 +1,14 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using IdentityTenantManagement.Exceptions;
 using IdentityTenantManagement.Helpers;
 using IdentityTenantManagement.Helpers.ContentBuilders;
 using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Models.Organisations;
 using IdentityTenantManagement.Services.KeycloakServices;
 using IO.Swagger.Model;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -19,6 +21,7 @@ public class KCOrganisationServiceTests
     private Mock<IKCRequestHelper> _mockRequestHelper;
     private KCOrganisationService _service;
     private KeycloakConfig _config;
+    private Mock<ILogger<KCOrganisationService>> _kcOrganisationServiceLogger;
 
     [SetUp]
     public void Setup()
@@ -31,10 +34,11 @@ public class KCOrganisationServiceTests
 
         _mockOptions = new Mock<IOptions<KeycloakConfig>>();
         _mockOptions.Setup(x => x.Value).Returns(_config);
+        
+        _kcOrganisationServiceLogger =  new Mock<ILogger<KCOrganisationService>>();
 
         _mockRequestHelper = new Mock<IKCRequestHelper>();
-
-        _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Object);
+_service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Object, _kcOrganisationServiceLogger.Object); 
     }
 
     #region AddUserToOrganisationAsync Tests
@@ -87,7 +91,7 @@ public class KCOrganisationServiceTests
 
         // Act & Assert
         Assert.That(async () => await _service.AddUserToOrganisationAsync(model),
-            Throws.TypeOf<HttpRequestException>());
+            Throws.TypeOf<KeycloakException>());
     }
 
     [Test]
@@ -110,7 +114,7 @@ public class KCOrganisationServiceTests
 
         // Act & Assert
         Assert.That(async () => await _service.AddUserToOrganisationAsync(model),
-            Throws.TypeOf<HttpRequestException>());
+            Throws.TypeOf<KeycloakException>());
     }
 
     #endregion

@@ -1,8 +1,7 @@
-using System.Text.Json;
 using IdentityTenantManagement.Helpers;
-using IdentityTenantManagement.Helpers.ContentBuilders;
 using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Models.Organisations;
+using IdentityTenantManagement.Services.KeycloakServices.Base;
 using IO.Swagger.Model;
 using Microsoft.Extensions.Options;
 
@@ -14,44 +13,38 @@ public interface IKCOrganisationService
     Task<OrganizationRepresentation> GetOrganisationByDomain(string domain);
     Task AddUserToOrganisationAsync(UserTenantModel model);
     Task InviteUserToOrganisationAsync(InviteUserModel model);
+    Task DeleteOrganisationAsync(string orgId);
+    Task RemoveUserFromOrganisationAsync(string userId, string orgId);
 }
 
-public class KCOrganisationService(IOptions<KeycloakConfig> config, IKCRequestHelper requestHelper) : IKCOrganisationService
+public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
 {
-    private readonly KeycloakConfig _config = config.Value;
-
-    public async Task AddUserToOrganisationAsync(UserTenantModel userTenantModel)
+    public KCOrganisationService(
+        IOptions<KeycloakConfig> config,
+        IKCRequestHelper requestHelper,
+        ILogger<KCOrganisationService> logger)
+        : base(config, requestHelper, logger)
     {
-        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{userTenantModel.TenantId}/members/invite-existing-user";  
-        var request = requestHelper.CreateHttpRequestMessage(HttpMethod.Post, endpoint, new {id = userTenantModel.UserId}, new FormUrlEncodedContentBuilder());
-
-        var response = await requestHelper.SendAsync(await request);
- 
-        response.EnsureSuccessStatusCode();
     }
-    
+
     public async Task<OrganizationRepresentation> GetOrganisationByDomain(string domain)
     {
-        
-        string query = HttpQueryCreator.BuildQueryForTenantSearchByDomain(search:domain);
-        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations{query}";  
-        var request = requestHelper.CreateHttpRequestMessage(HttpMethod.Get, endpoint, null, new JsonContentBuilder()); 
-        var response = await requestHelper.SendAsync(await request);
- 
-        response.EnsureSuccessStatusCode();
-        
-        string json = await response.Content.ReadAsStringAsync();
-        List<OrganizationRepresentation>? orgs = JsonSerializer.Deserialize<List<OrganizationRepresentation>>(json,
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-        return orgs.First()??null;
+        Logger.LogInformation("Getting organisation by domain: {Domain}", domain);
+
+        var query = HttpQueryCreator.BuildQueryForTenantSearchByDomain(search: domain);
+        var endpoint = BuildEndpoint($"organizations{query}");
+
+        var orgs = await GetAsync<List<OrganizationRepresentation>>(endpoint);
+
+        return GetFirstOrThrow(orgs, "Organization", $"domain={domain}");
     }
-     
+
     public async Task CreateOrgAsync(CreateTenantModel orgModel)
     {
-        var organisationsEndpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations";
+        Logger.LogInformation("Creating organisation: {Name} with domain {Domain}", orgModel.Name, orgModel.Domain);
+
+        var endpoint = BuildEndpoint("organizations");
+
         var org = new OrganizationRepresentation
         {
             Name = orgModel.Name,
@@ -61,16 +54,27 @@ public class KCOrganisationService(IOptions<KeycloakConfig> config, IKCRequestHe
                 new OrganizationDomainRepresentation { Name = orgModel.Domain }
             }
         };
-        var request = requestHelper.CreateHttpRequestMessage(HttpMethod.Post, organisationsEndpoint, org, new JsonContentBuilder() );
-        var response = await requestHelper.SendAsync(await request);
 
-        response.EnsureSuccessStatusCode();
+        await PostJsonAsync(endpoint, org);
+        Logger.LogInformation("Successfully created organisation: {Name}", orgModel.Name);
+    }
 
+    public async Task AddUserToOrganisationAsync(UserTenantModel userTenantModel)
+    {
+        Logger.LogInformation("Adding user {UserId} to organisation {OrgId}", userTenantModel.UserId, userTenantModel.TenantId);
+
+        var endpoint = BuildEndpoint($"organizations/{userTenantModel.TenantId}/members/invite-existing-user");
+
+        await PostFormAsync(endpoint, new { id = userTenantModel.UserId });
+
+        Logger.LogInformation("Successfully added user {UserId} to organisation {OrgId}", userTenantModel.UserId, userTenantModel.TenantId);
     }
 
     public async Task InviteUserToOrganisationAsync(InviteUserModel model)
     {
-        var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{model.TenantId}/members/invite-user";
+        Logger.LogInformation("Inviting user {Email} to organisation {OrgId}", model.Email, model.TenantId);
+
+        var endpoint = BuildEndpoint($"organizations/{model.TenantId}/members/invite-user");
 
         var inviteData = new Dictionary<string, string>();
 
@@ -83,9 +87,28 @@ public class KCOrganisationService(IOptions<KeycloakConfig> config, IKCRequestHe
         if (!string.IsNullOrEmpty(model.LastName))
             inviteData.Add("lastName", model.LastName);
 
-        var request = requestHelper.CreateHttpRequestMessage(HttpMethod.Post, endpoint, inviteData, new FormUrlEncodedContentBuilder());
-        var response = await requestHelper.SendAsync(await request);
+        await PostFormAsync(endpoint, inviteData);
 
-        response.EnsureSuccessStatusCode();
+        Logger.LogInformation("Successfully invited user {Email} to organisation {OrgId}", model.Email, model.TenantId);
+    }
+
+    public async Task DeleteOrganisationAsync(string orgId)
+    {
+        Logger.LogWarning("Deleting organisation: {OrgId}", orgId);
+
+        var endpoint = BuildEndpoint($"organizations/{orgId}");
+        await DeleteAsync(endpoint);
+
+        Logger.LogInformation("Successfully deleted organisation: {OrgId}", orgId);
+    }
+
+    public async Task RemoveUserFromOrganisationAsync(string userId, string orgId)
+    {
+        Logger.LogWarning("Removing user {UserId} from organisation {OrgId}", userId, orgId);
+
+        var endpoint = BuildEndpoint($"organizations/{orgId}/members/{userId}");
+        await DeleteAsync(endpoint);
+
+        Logger.LogInformation("Successfully removed user {UserId} from organisation {OrgId}", userId, orgId);
     }
 }

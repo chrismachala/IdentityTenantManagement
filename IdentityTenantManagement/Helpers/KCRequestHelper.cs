@@ -19,11 +19,21 @@ public class KCRequestHelper : IKCRequestHelper
 {
     private readonly KeycloakConfig _config;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<KCRequestHelper> _logger;
 
-    public KCRequestHelper(IOptions<KeycloakConfig> config, IHttpClientFactory httpClientFactory)
+    // Token caching
+    private string? _cachedToken;
+    private DateTime _tokenExpiry = DateTime.MinValue;
+    private readonly SemaphoreSlim _tokenLock = new(1, 1);
+
+    public KCRequestHelper(
+        IOptions<KeycloakConfig> config,
+        IHttpClientFactory httpClientFactory,
+        ILogger<KCRequestHelper> logger)
     {
         _config = config.Value;
-        _httpClient = httpClientFactory.CreateClient(); 
+        _httpClient = httpClientFactory.CreateClient();
+        _logger = logger;
     }
 
     public async Task<HttpRequestMessage> CreateHttpRequestMessage(HttpMethod method, string endpoint, object body, IHttpContentBuilder contentBuilder)
@@ -59,30 +69,63 @@ public class KCRequestHelper : IKCRequestHelper
 
     private async Task<string> GetAccessTokenAsync()
     {
-        var tokenEndpoint = $"{_config.BaseUrl}/realms/{_config.Realm}/protocol/openid-connect/token";
-
-        var content = new FormUrlEncodedContent(new[]
+        // Check if cached token is still valid (with 30 second buffer)
+        if (_cachedToken != null && DateTime.UtcNow < _tokenExpiry.AddSeconds(-30))
         {
-            new KeyValuePair<string, string>("grant_type", "client_credentials"),
-            new KeyValuePair<string, string>("client_id", _config.ClientId),
-            new KeyValuePair<string, string>("client_secret", _config.ClientSecret)
-        });
-
-        var response = await _httpClient.PostAsync(tokenEndpoint, content);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorContent = await response.Content.ReadAsStringAsync();
-            throw new KeycloakException(
-                "Failed to obtain access token from Keycloak",
-                response.StatusCode,
-                errorContent);
+            _logger.LogDebug("Using cached Keycloak access token");
+            return _cachedToken;
         }
 
-        var responseBody = await response.Content.ReadAsStringAsync();
-        var tokenResponse = JObject.Parse(responseBody);
+        // Use semaphore to prevent multiple token requests
+        await _tokenLock.WaitAsync();
+        try
+        {
+            // Double-check after acquiring lock
+            if (_cachedToken != null && DateTime.UtcNow < _tokenExpiry.AddSeconds(-30))
+            {
+                return _cachedToken;
+            }
 
-        return tokenResponse["access_token"]!.ToString();
+            _logger.LogDebug("Requesting new Keycloak access token");
+
+            var tokenEndpoint = $"{_config.BaseUrl}/realms/{_config.Realm}/protocol/openid-connect/token";
+
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                new KeyValuePair<string, string>("client_id", _config.ClientId),
+                new KeyValuePair<string, string>("client_secret", _config.ClientSecret)
+            });
+
+            var response = await _httpClient.PostAsync(tokenEndpoint, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to obtain Keycloak access token: {Error}", errorContent);
+                throw new KeycloakException(
+                    "Failed to obtain access token from Keycloak",
+                    response.StatusCode,
+                    errorContent);
+            }
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+            var tokenResponse = JObject.Parse(responseBody);
+
+            _cachedToken = tokenResponse["access_token"]!.ToString();
+
+            // Get expiry time (default to 5 minutes if not specified)
+            var expiresIn = tokenResponse["expires_in"]?.Value<int>() ?? 300;
+            _tokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn);
+
+            _logger.LogInformation("Successfully obtained Keycloak access token, expires in {Seconds} seconds", expiresIn);
+
+            return _cachedToken;
+        }
+        finally
+        {
+            _tokenLock.Release();
+        }
     }
 }
  
