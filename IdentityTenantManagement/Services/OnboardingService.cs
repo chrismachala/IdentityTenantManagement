@@ -16,48 +16,52 @@ public class OnboardingService : IOnboardingService
 {
     private readonly IKCOrganisationService _kcOrganisationService;
     private readonly IKCUserService _kcUserService;
-    private readonly IUserRepository _userRepository;
-    private readonly ITenantRepository _tenantRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public OnboardingService(
         IKCOrganisationService kcOrganisationService,
         IKCUserService kcUserService,
-        IUserRepository userRepository,
-        ITenantRepository tenantRepository)
+        IUnitOfWork unitOfWork)
     {
         _kcOrganisationService = kcOrganisationService;
         _kcUserService = kcUserService;
-        _userRepository = userRepository;
-        _tenantRepository = tenantRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task OnboardOrganisationAsync(TenantUserOnboardingModel model)
-    {
-        // Create user in Keycloak
-        await _kcUserService.CreateUserAsync(model.CreateUserModel);
+    { 
+        await _unitOfWork.BeginTransactionAsync();
 
-        // Retrieve the created user
-        UserRepresentation userRepresentation = await _kcUserService.GetUserByEmailAsync(model.CreateUserModel.Email);
-
-        // Create organization in Keycloak
-        await _kcOrganisationService.CreateOrgAsync(model.CreateTenantModel);
-
-        // Retrieve the created organization
-        OrganizationRepresentation organizationRepresentation = await _kcOrganisationService.GetOrganisationByDomain(model.CreateTenantModel.Domain);
-
-        // Link user to organization
-        UserTenantModel orgUser = new UserTenantModel
+        try
+        { 
+            await _kcUserService.CreateUserAsync(model.CreateUserModel);
+ 
+            UserRepresentation userRepresentation = await _kcUserService.GetUserByEmailAsync(model.CreateUserModel.Email);
+ 
+            await _kcOrganisationService.CreateOrgAsync(model.CreateTenantModel);
+ 
+            OrganizationRepresentation organizationRepresentation = await _kcOrganisationService.GetOrganisationByDomain(model.CreateTenantModel.Domain);
+ 
+            UserTenantModel orgUser = new UserTenantModel
+            {
+                UserId = userRepresentation.Id,
+                TenantId = organizationRepresentation.Id
+            };
+            await _kcOrganisationService.AddUserToOrganisationAsync(orgUser);
+ 
+            await AddUserAndTenantAsync(userRepresentation, organizationRepresentation);
+ 
+            await _unitOfWork.CommitAsync();
+        }
+        catch
         {
-            UserId = userRepresentation.Id,
-            TenantId = organizationRepresentation.Id
-        };
-        await _kcOrganisationService.AddUserToOrganisationAsync(orgUser);
-
-        // Persist user and tenant to database
-        await SaveUserAndTenantAsync(userRepresentation, organizationRepresentation);
+            // Rollback transaction on error
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
     }
 
-    private async Task SaveUserAndTenantAsync(UserRepresentation userRepresentation, OrganizationRepresentation organizationRepresentation)
+    private async Task AddUserAndTenantAsync(UserRepresentation userRepresentation, OrganizationRepresentation organizationRepresentation)
     {
         var user = new User
         {
@@ -67,7 +71,7 @@ public class OnboardingService : IOnboardingService
             SLastName = userRepresentation.LastName
         };
 
-        await _userRepository.AddAsync(user);
+        await _unitOfWork.Users.AddAsync(user);
 
         var tenant = new Tenant
         {
@@ -76,6 +80,6 @@ public class OnboardingService : IOnboardingService
             SName = organizationRepresentation.Name
         };
 
-        await _tenantRepository.AddAsync(tenant);
+        await _unitOfWork.Tenants.AddAsync(tenant);
     }
 }

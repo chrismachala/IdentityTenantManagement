@@ -38,13 +38,11 @@ public class TenantRepository : ITenantRepository
     public async Task AddAsync(Tenant entity)
     {
         await _context.Tenants.AddAsync(entity);
-        await _context.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(Tenant entity)
     {
         _context.Tenants.Update(entity);
-        await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(Guid id)
@@ -56,7 +54,6 @@ public class TenantRepository : ITenantRepository
         }
 
         _context.Tenants.Remove(tenant);
-        await _context.SaveChangesAsync();
     }
 
     public async Task<bool> ExistsAsync(Guid id)

@@ -39,13 +39,11 @@ public class UserRepository : IUserRepository
     public async Task AddAsync(User entity)
     {
         await _context.Users.AddAsync(entity);
-        await _context.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(User entity)
     {
         _context.Users.Update(entity);
-        await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(Guid id)
@@ -57,7 +55,6 @@ public class UserRepository : IUserRepository
         }
 
         _context.Users.Remove(user);
-        await _context.SaveChangesAsync();
     }
 
     public async Task<bool> ExistsAsync(Guid id)

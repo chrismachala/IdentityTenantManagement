@@ -21,8 +21,7 @@ namespace IdentityTenantManagement.Tests.Services
     {
         private Mock<IKCOrganisationService> _mockOrgService;
         private Mock<IKCUserService> _mockUserService;
-        private Mock<IUserRepository> _mockUserRepository;
-        private Mock<ITenantRepository> _mockTenantRepository;
+        private Mock<IUnitOfWork> _mockUnitOfWork;
         private OnboardingService _service;
 
         [SetUp]
@@ -30,14 +29,12 @@ namespace IdentityTenantManagement.Tests.Services
         {
             _mockOrgService = new Mock<IKCOrganisationService>();
             _mockUserService = new Mock<IKCUserService>();
-            _mockUserRepository = new Mock<IUserRepository>();
-            _mockTenantRepository = new Mock<ITenantRepository>();
+            _mockUnitOfWork = new Mock<IUnitOfWork>();
 
             _service = new OnboardingService(
                 _mockOrgService.Object,
-                _mockUserService.Object,
-                _mockUserRepository.Object,
-                _mockTenantRepository.Object
+                _mockUserService.Object, 
+                _mockUnitOfWork.Object
             );
         }
 
@@ -89,8 +86,8 @@ namespace IdentityTenantManagement.Tests.Services
             _mockOrgService.Setup(x => x.GetOrganisationByDomain("example.com")).ReturnsAsync(orgRep);
             _mockOrgService.Setup(x => x.AddUserToOrganisationAsync(It.IsAny<UserTenantModel>())).Returns(Task.CompletedTask);
 
-            _mockUserRepository.Setup(x => x.AddAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
-            _mockTenantRepository.Setup(x => x.AddAsync(It.IsAny<Tenant>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.Users.AddAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.Tenants.AddAsync(It.IsAny<Tenant>())).Returns(Task.CompletedTask);
 
             // Act
             await _service.OnboardOrganisationAsync(model);
@@ -105,14 +102,14 @@ namespace IdentityTenantManagement.Tests.Services
                 u => u.UserId == userId && u.TenantId == orgId
             )), Times.Once);
 
-            _mockUserRepository.Verify(x => x.AddAsync(It.Is<User>(u =>
+            _mockUnitOfWork.Verify(x => x.Users.AddAsync(It.Is<User>(u =>
                 u.GUserId == Guid.Parse(userId) &&
                 u.SEmail == "user@example.com" &&
                 u.SFirstName == "John" &&
                 u.SLastName == "Doe"
             )), Times.Once);
 
-            _mockTenantRepository.Verify(x => x.AddAsync(It.Is<Tenant>(t =>
+            _mockUnitOfWork.Verify(x => x.Tenants.AddAsync(It.Is<Tenant>(t =>
                 t.GTenantId == Guid.Parse(orgId) &&
                 t.SDomain == "example.com" &&
                 t.SName == "ExampleOrg"
@@ -288,8 +285,8 @@ namespace IdentityTenantManagement.Tests.Services
             _mockOrgService.Setup(x => x.GetOrganisationByDomain("example.com")).ReturnsAsync(orgRep);
             _mockOrgService.Setup(x => x.AddUserToOrganisationAsync(It.IsAny<UserTenantModel>())).Returns(Task.CompletedTask);
 
-            _mockUserRepository
-                .Setup(x => x.AddAsync(It.IsAny<User>()))
+            _mockUnitOfWork
+                .Setup(x => x.Users.AddAsync(It.IsAny<User>()))
                 .ThrowsAsync(new DbUpdateException("Database save failed"));
 
             // Act & Assert
@@ -341,11 +338,11 @@ namespace IdentityTenantManagement.Tests.Services
                 .Returns(Task.CompletedTask)
                 .Callback(() => callOrder.Add("AddUserToOrg"));
 
-            _mockUserRepository.Setup(x => x.AddAsync(It.IsAny<User>()))
+            _mockUnitOfWork.Setup(x => x.Users.AddAsync(It.IsAny<User>()))
                 .Returns(Task.CompletedTask)
                 .Callback(() => callOrder.Add("AddUser"));
 
-            _mockTenantRepository.Setup(x => x.AddAsync(It.IsAny<Tenant>()))
+            _mockUnitOfWork.Setup(x => x.Tenants.AddAsync(It.IsAny<Tenant>()))
                 .Returns(Task.CompletedTask)
                 .Callback(() => callOrder.Add("AddTenant"));
 
@@ -401,14 +398,14 @@ namespace IdentityTenantManagement.Tests.Services
             _mockOrgService.Setup(x => x.GetOrganisationByDomain("primary.com")).ReturnsAsync(orgRep);
             _mockOrgService.Setup(x => x.AddUserToOrganisationAsync(It.IsAny<UserTenantModel>())).Returns(Task.CompletedTask);
 
-            _mockUserRepository.Setup(x => x.AddAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
-            _mockTenantRepository.Setup(x => x.AddAsync(It.IsAny<Tenant>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.Users.AddAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(x => x.Tenants.AddAsync(It.IsAny<Tenant>())).Returns(Task.CompletedTask);
 
             // Act
             await _service.OnboardOrganisationAsync(model);
 
             // Assert - Verify that the first domain is used
-            _mockTenantRepository.Verify(x => x.AddAsync(It.Is<Tenant>(t =>
+            _mockUnitOfWork.Verify(x => x.Tenants.AddAsync(It.Is<Tenant>(t =>
                 t.SDomain == "primary.com"
             )), Times.Once);
         }
