@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using IdentityTenantManagement.Exceptions;
 using IdentityTenantManagement.Helpers;
 using IdentityTenantManagement.Helpers.ContentBuilders;
 using IdentityTenantManagement.Models.Keycloak;
@@ -89,12 +90,35 @@ public class KCUserServiceTests
     }
 
     [Test]
-    public void GetUserByEmailAsync_ThrowsHttpRequestException_WhenResponseIsNotSuccessful()
+    public void GetUserByEmailAsync_ThrowsKeycloakException_WhenResponseIsNotSuccessful()
     {
         // Arrange
         var email = "bad@example.com";
         var fakeRequest = new HttpRequestMessage(HttpMethod.Get, "fake");
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.InternalServerError);
+
+        _mockRequestHelper
+            .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Get, It.IsAny<string>(), null, It.IsAny<JsonContentBuilder>()))
+            .ReturnsAsync(fakeRequest);
+
+        _mockRequestHelper
+            .Setup(h => h.SendAsync(fakeRequest))
+            .ThrowsAsync(new KeycloakException("Internal server error", HttpStatusCode.InternalServerError, "Error"));
+
+        // Act & Assert
+        Assert.ThrowsAsync<KeycloakException>(async () => await _service.GetUserByEmailAsync(email));
+    }
+
+    [Test]
+    public void GetUserByEmailAsync_ThrowsNotFoundException_WhenUserNotFound()
+    {
+        // Arrange
+        var email = "notfound@example.com";
+        var fakeRequest = new HttpRequestMessage(HttpMethod.Get, "fake");
+        var json = JsonSerializer.Serialize(new List<UserRepresentation>());
+        var httpResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Get, It.IsAny<string>(), null, It.IsAny<JsonContentBuilder>()))
@@ -105,17 +129,16 @@ public class KCUserServiceTests
             .ReturnsAsync(httpResponse);
 
         // Act & Assert
-        Assert.ThrowsAsync<HttpRequestException>(async () => await _service.GetUserByEmailAsync(email));
+        Assert.ThrowsAsync<NotFoundException>(async () => await _service.GetUserByEmailAsync(email));
     }
 
     [Test]
     [TestCase("")]
     [TestCase("invalid-email")]
-    public void GetUserByEmailAsync_HandlesInvalidEmail(string email)
+    public void GetUserByEmailAsync_ThrowsKeycloakException_ForInvalidEmail(string email)
     {
         // Arrange
         var fakeRequest = new HttpRequestMessage(HttpMethod.Get, "fake");
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.BadRequest);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Get, It.IsAny<string>(), null, It.IsAny<JsonContentBuilder>()))
@@ -123,10 +146,10 @@ public class KCUserServiceTests
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("Bad request", HttpStatusCode.BadRequest, "Invalid email"));
 
         // Act & Assert
-        Assert.ThrowsAsync<HttpRequestException>(async () => await _service.GetUserByEmailAsync(email));
+        Assert.ThrowsAsync<KeycloakException>(async () => await _service.GetUserByEmailAsync(email));
     }
 
     #endregion
@@ -182,7 +205,7 @@ public class KCUserServiceTests
     }
 
     [Test]
-    public void CreateUserAsync_ThrowsHttpRequestException_WhenRequestFails()
+    public void CreateUserAsync_ThrowsKeycloakException_WhenRequestFails()
     {
         // Arrange
         var model = new CreateUserModel
@@ -196,7 +219,6 @@ public class KCUserServiceTests
 
         var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users";
         var fakeRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.BadRequest);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Post, endpoint, It.IsAny<object>(), It.IsAny<JsonContentBuilder>()))
@@ -204,14 +226,14 @@ public class KCUserServiceTests
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("Bad request", HttpStatusCode.BadRequest, "Error"));
 
         // Act & Assert
-        Assert.ThrowsAsync<HttpRequestException>(() => _service.CreateUserAsync(model));
+        Assert.ThrowsAsync<KeycloakException>(() => _service.CreateUserAsync(model));
     }
 
     [Test]
-    public void CreateUserAsync_ThrowsHttpRequestException_WhenUserAlreadyExists()
+    public void CreateUserAsync_ThrowsKeycloakException_WhenUserAlreadyExists()
     {
         // Arrange
         var model = new CreateUserModel
@@ -225,7 +247,6 @@ public class KCUserServiceTests
 
         var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/users";
         var fakeRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.Conflict);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Post, endpoint, It.IsAny<object>(), It.IsAny<JsonContentBuilder>()))
@@ -233,10 +254,10 @@ public class KCUserServiceTests
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("Conflict", HttpStatusCode.Conflict, "User already exists"));
 
         // Act & Assert
-        Assert.ThrowsAsync<HttpRequestException>(() => _service.CreateUserAsync(model));
+        Assert.ThrowsAsync<KeycloakException>(() => _service.CreateUserAsync(model));
     }
 
     #endregion

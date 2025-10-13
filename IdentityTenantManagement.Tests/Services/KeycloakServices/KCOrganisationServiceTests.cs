@@ -72,14 +72,13 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
     }
 
     [Test]
-    public void AddUserToOrganisationAsync_ThrowsHttpRequestException_WhenRequestFails()
+    public void AddUserToOrganisationAsync_ThrowsKeycloakException_WhenRequestFails()
     {
         // Arrange
         var model = new UserTenantModel { TenantId = "tenant-123", UserId = "user-456" };
         var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{model.TenantId}/members/invite-existing-user";
 
         var fakeRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.BadRequest);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Post, endpoint, It.IsAny<object>(), It.IsAny<FormUrlEncodedContentBuilder>()))
@@ -87,7 +86,7 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("Request failed", HttpStatusCode.BadRequest, "Bad request"));
 
         // Act & Assert
         Assert.That(async () => await _service.AddUserToOrganisationAsync(model),
@@ -95,14 +94,13 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
     }
 
     [Test]
-    public void AddUserToOrganisationAsync_ThrowsHttpRequestException_WhenUserNotFound()
+    public void AddUserToOrganisationAsync_ThrowsKeycloakException_WhenUserNotFound()
     {
         // Arrange
         var model = new UserTenantModel { TenantId = "tenant-123", UserId = "nonexistent-user" };
         var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations/{model.TenantId}/members/invite-existing-user";
 
         var fakeRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.NotFound);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Post, endpoint, It.IsAny<object>(), It.IsAny<FormUrlEncodedContentBuilder>()))
@@ -110,7 +108,7 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("User not found", HttpStatusCode.NotFound, "Not found"));
 
         // Act & Assert
         Assert.That(async () => await _service.AddUserToOrganisationAsync(model),
@@ -167,12 +165,11 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
     }
 
     [Test]
-    public void GetOrganisationByDomain_ThrowsHttpRequestException_WhenRequestFails()
+    public void GetOrganisationByDomain_ThrowsKeycloakException_WhenRequestFails()
     {
         // Arrange
         var domain = "bad-domain.com";
         var fakeRequest = new HttpRequestMessage(HttpMethod.Get, "fake");
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.InternalServerError);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Get, It.IsAny<string>(), null, It.IsAny<JsonContentBuilder>()))
@@ -180,20 +177,24 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("Internal server error", HttpStatusCode.InternalServerError, "Error"));
 
         // Act & Assert
         Assert.That(async () => await _service.GetOrganisationByDomain(domain),
-            Throws.TypeOf<HttpRequestException>());
+            Throws.TypeOf<KeycloakException>());
     }
 
     [Test]
-    public void GetOrganisationByDomain_ThrowsHttpRequestException_WhenDomainNotFound()
+    public void GetOrganisationByDomain_ThrowsNotFoundException_WhenDomainNotFound()
     {
         // Arrange
         var domain = "nonexistent.com";
         var fakeRequest = new HttpRequestMessage(HttpMethod.Get, "fake");
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.NotFound);
+        var json = JsonSerializer.Serialize(new List<OrganizationRepresentation>());
+        var httpResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Get, It.IsAny<string>(), null, It.IsAny<JsonContentBuilder>()))
@@ -205,7 +206,8 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
 
         // Act & Assert
         Assert.That(async () => await _service.GetOrganisationByDomain(domain),
-            Throws.TypeOf<HttpRequestException>());
+            Throws.TypeOf<NotFoundException>()
+                .With.Message.Contains("Organization"));
     }
 
     #endregion
@@ -251,14 +253,13 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
     }
 
     [Test]
-    public void CreateOrgAsync_ThrowsHttpRequestException_WhenRequestFails()
+    public void CreateOrgAsync_ThrowsKeycloakException_WhenRequestFails()
     {
         // Arrange
         var model = new CreateTenantModel { Name = "FailOrg", Domain = "fail.com" };
         var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations";
 
         var fakeRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.BadRequest);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Post, endpoint, It.IsAny<object>(), It.IsAny<JsonContentBuilder>()))
@@ -266,22 +267,21 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("Bad request", HttpStatusCode.BadRequest, "Error"));
 
         // Act & Assert
         Assert.That(async () => await _service.CreateOrgAsync(model),
-            Throws.TypeOf<HttpRequestException>());
+            Throws.TypeOf<KeycloakException>());
     }
 
     [Test]
-    public void CreateOrgAsync_ThrowsHttpRequestException_WhenOrganisationAlreadyExists()
+    public void CreateOrgAsync_ThrowsKeycloakException_WhenOrganisationAlreadyExists()
     {
         // Arrange
         var model = new CreateTenantModel { Name = "ExistingOrg", Domain = "existing.com" };
         var endpoint = $"{_config.BaseUrl}/admin/realms/{_config.Realm}/organizations";
 
         var fakeRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        var httpResponse = new HttpResponseMessage(HttpStatusCode.Conflict);
 
         _mockRequestHelper
             .Setup(h => h.CreateHttpRequestMessage(HttpMethod.Post, endpoint, It.IsAny<object>(), It.IsAny<JsonContentBuilder>()))
@@ -289,11 +289,11 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
 
         _mockRequestHelper
             .Setup(h => h.SendAsync(fakeRequest))
-            .ReturnsAsync(httpResponse);
+            .ThrowsAsync(new KeycloakException("Conflict", HttpStatusCode.Conflict, "Already exists"));
 
         // Act & Assert
         Assert.That(async () => await _service.CreateOrgAsync(model),
-            Throws.TypeOf<HttpRequestException>());
+            Throws.TypeOf<KeycloakException>());
     }
 
     #endregion
