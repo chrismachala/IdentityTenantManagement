@@ -1,15 +1,10 @@
-
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using IdentityTenantManagement.EFCore;
 using IdentityTenantManagement.Models.Onboarding;
 using IdentityTenantManagement.Models.Organisations;
 using IdentityTenantManagement.Models.Users;
 using IdentityTenantManagement.Repositories;
 using IdentityTenantManagement.Services;
 using IdentityTenantManagement.Services.KeycloakServices;
+using IdentityTenantManagementDatabase.Models;
 using IO.Swagger.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -107,16 +102,16 @@ namespace IdentityTenantManagement.Tests.Services
             )), Times.Once);
 
             _mockUnitOfWork.Verify(x => x.Users.AddAsync(It.Is<User>(u =>
-                u.GUserId == Guid.Parse(userId) &&
-                u.SEmail == "user@example.com" &&
-                u.SFirstName == "John" &&
-                u.SLastName == "Doe"
+                u.Id == Guid.Parse(userId) &&
+                u.Email == "user@example.com" &&
+                u.FirstName == "John" &&
+                u.LastName == "Doe"
             )), Times.Once);
 
             _mockUnitOfWork.Verify(x => x.Tenants.AddAsync(It.Is<Tenant>(t =>
-                t.GTenantId == Guid.Parse(orgId) &&
-                t.SDomain == "example.com" &&
-                t.SName == "ExampleOrg"
+                t.Id == Guid.Parse(orgId) &&
+                t.Domains.Any(d => d.Domain == "example.com") &&
+                t.Name == "ExampleOrg"
             )), Times.Once);
         }
 
@@ -410,7 +405,7 @@ namespace IdentityTenantManagement.Tests.Services
 
             // Assert - Verify that the first domain is used
             _mockUnitOfWork.Verify(x => x.Tenants.AddAsync(It.Is<Tenant>(t =>
-                t.SDomain == "primary.com"
+                t.Domains.Any(d => d.IsPrimary && d.Domain == "primary.com")
             )), Times.Once);
         }
 

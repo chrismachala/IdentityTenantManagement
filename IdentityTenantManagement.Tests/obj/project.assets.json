@@ -2013,6 +2013,7 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
+          "IdentityTenantManagementDatabase": "1.0.0",
           "Microsoft.AspNetCore.OpenApi": "9.0.4",
           "Microsoft.EntityFrameworkCore": "9.0.9",
           "Microsoft.EntityFrameworkCore.SqlServer": "9.0.9",
@@ -2030,6 +2031,20 @@
         "frameworkReferences": [
           "Microsoft.AspNetCore.App"
         ]
+      },
+      "IdentityTenantManagementDatabase/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "9.0.9",
+          "Microsoft.EntityFrameworkCore.SqlServer": "9.0.9"
+        },
+        "compile": {
+          "bin/placeholder/IdentityTenantManagementDatabase.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/IdentityTenantManagementDatabase.dll": {}
+        }
       }
     }
   },
@@ -5638,6 +5653,11 @@
       "type": "project",
       "path": "../IdentityTenantManagement/IdentityTenantManagement.csproj",
       "msbuildProject": "../IdentityTenantManagement/IdentityTenantManagement.csproj"
+    },
+    "IdentityTenantManagementDatabase/1.0.0": {
+      "type": "project",
+      "path": "../IdentityTenantManagementDatabase/IdentityTenantManagementDatabase.csproj",
+      "msbuildProject": "../IdentityTenantManagementDatabase/IdentityTenantManagementDatabase.csproj"
     }
   },
   "projectFileDependencyGroups": {

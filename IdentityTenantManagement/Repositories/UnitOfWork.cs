@@ -1,4 +1,4 @@
-using IdentityTenantManagement.EFCore;
+using IdentityTenantManagementDatabase.DbContexts;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace IdentityTenantManagement.Repositories;
@@ -49,8 +49,12 @@ public class UnitOfWork : IUnitOfWork
         }
         finally
         {
-            await _transaction.DisposeAsync();
-            _transaction = null;
+            if (_transaction != null)
+            {
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+
         }
     }
 

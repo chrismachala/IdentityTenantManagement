@@ -1,9 +1,9 @@
-using IdentityTenantManagement.EFCore;
 using IdentityTenantManagement.Helpers;
 using IdentityTenantManagement.Middleware;
 using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Services;
 using IdentityTenantManagement.Services.KeycloakServices;
+using IdentityTenantManagementDatabase.DbContexts;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -1,4 +1,6 @@
-using IdentityTenantManagement.EFCore;
+ 
+
+using IdentityTenantManagementDatabase.Models;
 
 namespace IdentityTenantManagement.Repositories;
 

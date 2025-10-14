@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IdentityTenantManagement")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+611b555b412c3f4931f56787258005fd5fec82a5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+946088c54b0bec04900a18c67781b0e3cc48615e")]
 [assembly: System.Reflection.AssemblyProductAttribute("IdentityTenantManagement")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IdentityTenantManagement")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

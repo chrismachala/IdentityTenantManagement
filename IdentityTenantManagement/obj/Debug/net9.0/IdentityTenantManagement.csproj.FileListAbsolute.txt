@@ -249,3 +249,5 @@ C:\Users\chris\SourceCode\projects\IdentityTenantManagement\IdentityTenantManage
 C:\Users\chris\SourceCode\projects\IdentityTenantManagement\IdentityTenantManagement\bin\Debug\net9.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
 C:\Users\chris\SourceCode\projects\IdentityTenantManagement\IdentityTenantManagement\bin\Debug\net9.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
 C:\Users\chris\SourceCode\projects\IdentityTenantManagement\IdentityTenantManagement\obj\Debug\net9.0\IdentityTenantManagement.sourcelink.json
+C:\Users\chris\SourceCode\projects\IdentityTenantManagement\IdentityTenantManagement\bin\Debug\net9.0\IdentityTenantManagementDatabase.dll
+C:\Users\chris\SourceCode\projects\IdentityTenantManagement\IdentityTenantManagement\bin\Debug\net9.0\IdentityTenantManagementDatabase.pdb

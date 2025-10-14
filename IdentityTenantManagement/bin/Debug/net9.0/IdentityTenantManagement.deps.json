@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v9.0": {
       "IdentityTenantManagement/1.0.0": {
         "dependencies": {
+          "IdentityTenantManagementDatabase": "1.0.0",
           "Microsoft.AspNetCore.OpenApi": "9.0.4",
           "Microsoft.EntityFrameworkCore": "9.0.9",
           "Microsoft.EntityFrameworkCore.Design": "9.0.9",
@@ -1026,6 +1027,18 @@
           }
         }
       },
+      "IdentityTenantManagementDatabase/1.0.0": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "9.0.9",
+          "Microsoft.EntityFrameworkCore.SqlServer": "9.0.9"
+        },
+        "runtime": {
+          "IdentityTenantManagementDatabase.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
       "KeycloakModels/1.0.0.0": {
         "runtime": {
           "KeycloakModels.dll": {
@@ -1615,6 +1628,11 @@
       "sha512": "sha512-9MXFp+CvnpqGSRx6FGlKHX5ztHmBi5BoZBnn1/p+NJ1qTLhkTnuszJ3jTOiydSE1y2XIKRLqmZEjiyCGBDrWkw==",
       "path": "system.windows.extensions/9.0.9",
       "hashPath": "system.windows.extensions.9.0.9.nupkg.sha512"
+    },
+    "IdentityTenantManagementDatabase/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
     },
     "KeycloakModels/1.0.0.0": {
       "type": "reference",

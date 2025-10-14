@@ -1,8 +1,8 @@
-using IdentityTenantManagement.EFCore;
 using IdentityTenantManagement.Models.Onboarding;
 using IdentityTenantManagement.Models.Organisations;
 using IdentityTenantManagement.Repositories;
 using IdentityTenantManagement.Services.KeycloakServices;
+using IdentityTenantManagementDatabase.Models;
 using IO.Swagger.Model;
 
 namespace IdentityTenantManagement.Services;
@@ -168,19 +168,25 @@ public class OnboardingService : IOnboardingService
     {
         var user = new User
         {
-            GUserId = Guid.Parse(userRepresentation.Id),
-            SEmail = userRepresentation.Email,
-            SFirstName = userRepresentation.FirstName,
-            SLastName = userRepresentation.LastName
+            Id = Guid.Parse(userRepresentation.Id),
+            Email = userRepresentation.Email,
+            FirstName = userRepresentation.FirstName,
+            LastName = userRepresentation.LastName
         };
 
         await _unitOfWork.Users.AddAsync(user);
 
         var tenant = new Tenant
         {
-            GTenantId = Guid.Parse(organizationRepresentation.Id),
-            SDomain = organizationRepresentation.Domains.First().Name,
-            SName = organizationRepresentation.Name
+            Id = Guid.Parse(organizationRepresentation.Id),
+            Domains = organizationRepresentation.Domains
+                .Select(d => new TenantDomain
+                {
+                    Domain = d.Name,
+                    IsPrimary = d == organizationRepresentation.Domains.First()
+                })
+                .ToList(),
+            Name = organizationRepresentation.Name
         };
 
         await _unitOfWork.Tenants.AddAsync(tenant);

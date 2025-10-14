@@ -1,5 +1,6 @@
-using IdentityTenantManagement.EFCore;
 using IdentityTenantManagement.Exceptions;
+using IdentityTenantManagementDatabase.DbContexts;
+using IdentityTenantManagementDatabase.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace IdentityTenantManagement.Repositories;
@@ -26,7 +27,7 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetByEmailAsync(string email)
     {
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.SEmail == email);
+            .FirstOrDefaultAsync(u => u.Email == email);
     }
 
     public async Task<IEnumerable<User>> GetByTenantIdAsync(Guid tenantId)
@@ -59,6 +60,6 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> ExistsAsync(Guid id)
     {
-        return await _context.Users.AnyAsync(u => u.GUserId == id);
+        return await _context.Users.AnyAsync(u => u.Id == id);
     }
 }

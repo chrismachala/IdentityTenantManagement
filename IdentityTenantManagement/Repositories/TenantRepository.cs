@@ -1,5 +1,6 @@
-using IdentityTenantManagement.EFCore;
 using IdentityTenantManagement.Exceptions;
+using IdentityTenantManagementDatabase.DbContexts;
+using IdentityTenantManagementDatabase.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace IdentityTenantManagement.Repositories;
@@ -26,13 +27,16 @@ public class TenantRepository : ITenantRepository
     public async Task<Tenant?> GetByDomainAsync(string domain)
     {
         return await _context.Tenants
-            .FirstOrDefaultAsync(t => t.SDomain == domain);
+            .Include(t => t.Domains)
+            .FirstOrDefaultAsync(t => t.Domains.Any(d => d.Domain == domain));
+        // return await _context.Tenants
+        //     .FirstOrDefaultAsync(t => t.Domains == domain);
     }
 
     public async Task<Tenant?> GetByNameAsync(string name)
     {
         return await _context.Tenants
-            .FirstOrDefaultAsync(t => t.SName == name);
+            .FirstOrDefaultAsync(t => t.Name == name);
     }
 
     public async Task AddAsync(Tenant entity)
@@ -58,6 +62,6 @@ public class TenantRepository : ITenantRepository
 
     public async Task<bool> ExistsAsync(Guid id)
     {
-        return await _context.Tenants.AnyAsync(t => t.GTenantId == id);
+        return await _context.Tenants.AnyAsync(t => t.Id == id);
     }
 }
