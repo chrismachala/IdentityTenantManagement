@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IdentityTenantManagementDatabase.Migrations
 {
     [DbContext(typeof(IdentityTenantManagementContext))]
-    [Migration("20251014003746_SeedKeycloakIdentityProviderFix")]
-    partial class SeedKeycloakIdentityProviderFix
+    [Migration("20251014020848_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -37,9 +37,8 @@ namespace IdentityTenantManagementDatabase.Migrations
                     b.Property<Guid>("EntityId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("EntityTypeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ExternalIdentifier")
                         .IsRequired()
@@ -56,6 +55,8 @@ namespace IdentityTenantManagementDatabase.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EntityTypeId");
+
                     b.HasIndex("ProviderId");
 
                     b.HasIndex("TenantId");
@@ -63,6 +64,33 @@ namespace IdentityTenantManagementDatabase.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ExternalIdentities");
+                });
+
+            modelBuilder.Entity("IdentityTenantManagementDatabase.Models.ExternalIdentityEntityType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ExternalIdentityEntityTypes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("86e6890c-0b3f-4278-bd92-a4fd2ea55413"),
+                            EntityType = "user"
+                        },
+                        new
+                        {
+                            Id = new Guid("f6d6e7fc-8998-4b77-ad31-552e5c76c3dd"),
+                            EntityType = "tenant"
+                        });
                 });
 
             modelBuilder.Entity("IdentityTenantManagementDatabase.Models.IdentityProvider", b =>
@@ -156,10 +184,8 @@ namespace IdentityTenantManagementDatabase.Migrations
 
             modelBuilder.Entity("IdentityTenantManagementDatabase.Models.TenantUser", b =>
                 {
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("JoinedAt")
@@ -169,9 +195,18 @@ namespace IdentityTenantManagementDatabase.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("TenantId", "UserId");
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("TenantId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("TenantUsers");
                 });
@@ -217,10 +252,16 @@ namespace IdentityTenantManagementDatabase.Migrations
 
             modelBuilder.Entity("IdentityTenantManagementDatabase.Models.ExternalIdentity", b =>
                 {
+                    b.HasOne("IdentityTenantManagementDatabase.Models.ExternalIdentityEntityType", "EntityType")
+                        .WithMany("ExternalIdentities")
+                        .HasForeignKey("EntityTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("IdentityTenantManagementDatabase.Models.IdentityProvider", "Provider")
                         .WithMany("ExternalIdentities")
                         .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("IdentityTenantManagementDatabase.Models.Tenant", null)
@@ -230,6 +271,8 @@ namespace IdentityTenantManagementDatabase.Migrations
                     b.HasOne("IdentityTenantManagementDatabase.Models.User", null)
                         .WithMany("ExternalIdentities")
                         .HasForeignKey("UserId");
+
+                    b.Navigation("EntityType");
 
                     b.Navigation("Provider");
                 });
@@ -269,6 +312,11 @@ namespace IdentityTenantManagementDatabase.Migrations
                     b.HasOne("IdentityTenantManagementDatabase.Models.Tenant", null)
                         .WithMany("Users")
                         .HasForeignKey("TenantId");
+                });
+
+            modelBuilder.Entity("IdentityTenantManagementDatabase.Models.ExternalIdentityEntityType", b =>
+                {
+                    b.Navigation("ExternalIdentities");
                 });
 
             modelBuilder.Entity("IdentityTenantManagementDatabase.Models.IdentityProvider", b =>

@@ -9,6 +9,9 @@ public class UnitOfWork : IUnitOfWork
     private IDbContextTransaction? _transaction;
     private IUserRepository? _userRepository;
     private ITenantRepository? _tenantRepository;
+    private IExternalIdentityRepository? _externalIdentityRepository;
+    private IIdentityProviderRepository? _identityProviderRepository;
+    private ITenantUserRepository? _tenantUserRepository;
 
     public UnitOfWork(IdentityTenantManagementContext context)
     {
@@ -18,6 +21,12 @@ public class UnitOfWork : IUnitOfWork
     public IUserRepository Users => _userRepository ??= new UserRepository(_context);
 
     public ITenantRepository Tenants => _tenantRepository ??= new TenantRepository(_context);
+
+    public IExternalIdentityRepository ExternalIdentities => _externalIdentityRepository ??= new ExternalIdentityRepository(_context);
+
+    public IIdentityProviderRepository IdentityProviders => _identityProviderRepository ??= new IdentityProviderRepository(_context);
+
+    public ITenantUserRepository TenantUsers => _tenantUserRepository ??= new TenantUserRepository(_context);
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

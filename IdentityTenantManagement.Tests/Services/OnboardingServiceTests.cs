@@ -1,3 +1,4 @@
+using IdentityTenantManagement.Constants;
 using IdentityTenantManagement.Models.Onboarding;
 using IdentityTenantManagement.Models.Organisations;
 using IdentityTenantManagement.Models.Users;
@@ -18,8 +19,14 @@ namespace IdentityTenantManagement.Tests.Services
         private Mock<IKCOrganisationService> _mockOrgService;
         private Mock<IKCUserService> _mockUserService;
         private Mock<IUnitOfWork> _mockUnitOfWork;
+        private Mock<IUserRepository> _mockUserRepository;
+        private Mock<ITenantRepository> _mockTenantRepository;
+        private Mock<IExternalIdentityRepository> _mockExternalIdentityRepository;
+        private Mock<IIdentityProviderRepository> _mockIdentityProviderRepository;
+        private Mock<ITenantUserRepository> _mockTenantUserRepository;
         private Mock<ILogger<OnboardingService>> _mockLogger;
         private OnboardingService _service;
+        private IdentityProvider _keycloakProvider;
 
         [SetUp]
         public void Setup()
@@ -27,7 +34,32 @@ namespace IdentityTenantManagement.Tests.Services
             _mockOrgService = new Mock<IKCOrganisationService>();
             _mockUserService = new Mock<IKCUserService>();
             _mockUnitOfWork = new Mock<IUnitOfWork>();
+            _mockUserRepository = new Mock<IUserRepository>();
+            _mockTenantRepository = new Mock<ITenantRepository>();
+            _mockExternalIdentityRepository = new Mock<IExternalIdentityRepository>();
+            _mockIdentityProviderRepository = new Mock<IIdentityProviderRepository>();
+            _mockTenantUserRepository = new Mock<ITenantUserRepository>();
             _mockLogger = new Mock<ILogger<OnboardingService>>();
+
+            // Set up the pre-seeded Keycloak provider
+            _keycloakProvider = new IdentityProvider
+            {
+                Id = Guid.Parse("049284C1-FF29-4F28-869F-F64300B69719"),
+                Name = "Keycloak",
+                ProviderType = "oidc"
+            };
+
+            // Set up repository properties on UnitOfWork
+            _mockUnitOfWork.Setup(x => x.Users).Returns(_mockUserRepository.Object);
+            _mockUnitOfWork.Setup(x => x.Tenants).Returns(_mockTenantRepository.Object);
+            _mockUnitOfWork.Setup(x => x.ExternalIdentities).Returns(_mockExternalIdentityRepository.Object);
+            _mockUnitOfWork.Setup(x => x.IdentityProviders).Returns(_mockIdentityProviderRepository.Object);
+            _mockUnitOfWork.Setup(x => x.TenantUsers).Returns(_mockTenantUserRepository.Object);
+
+            // Mock IdentityProvider lookup
+            _mockIdentityProviderRepository
+                .Setup(x => x.GetByNameAsync("Keycloak"))
+                .ReturnsAsync(_keycloakProvider);
 
             _service = new OnboardingService(
                 _mockOrgService.Object,
@@ -101,17 +133,35 @@ namespace IdentityTenantManagement.Tests.Services
                 u => u.UserId == userId && u.TenantId == orgId
             )), Times.Once);
 
-            _mockUnitOfWork.Verify(x => x.Users.AddAsync(It.Is<User>(u =>
-                u.Id == Guid.Parse(userId) &&
+            // Verify User is created with internal GUID (NOT Keycloak GUID)
+            _mockUserRepository.Verify(x => x.AddAsync(It.Is<User>(u =>
                 u.Email == "user@example.com" &&
                 u.FirstName == "John" &&
                 u.LastName == "Doe"
             )), Times.Once);
 
-            _mockUnitOfWork.Verify(x => x.Tenants.AddAsync(It.Is<Tenant>(t =>
-                t.Id == Guid.Parse(orgId) &&
+            // Verify Tenant is created with internal GUID (NOT Keycloak GUID)
+            _mockTenantRepository.Verify(x => x.AddAsync(It.Is<Tenant>(t =>
                 t.Domains.Any(d => d.Domain == "example.com") &&
                 t.Name == "ExampleOrg"
+            )), Times.Once);
+
+            // Verify ExternalIdentity records are created for both user and tenant
+            _mockExternalIdentityRepository.Verify(x => x.AddAsync(It.Is<ExternalIdentity>(e =>
+                e.EntityTypeId == ExternalIdentityEntityTypeIds.User &&
+                e.ExternalIdentifier == userId &&
+                e.ProviderId == _keycloakProvider.Id
+            )), Times.Once);
+
+            _mockExternalIdentityRepository.Verify(x => x.AddAsync(It.Is<ExternalIdentity>(e =>
+                e.EntityTypeId == ExternalIdentityEntityTypeIds.Tenant &&
+                e.ExternalIdentifier == orgId &&
+                e.ProviderId == _keycloakProvider.Id
+            )), Times.Once);
+
+            // Verify TenantUser relationship is created
+            _mockTenantUserRepository.Verify(x => x.AddAsync(It.Is<TenantUser>(tu =>
+                tu.Role == "owner"
             )), Times.Once);
         }
 

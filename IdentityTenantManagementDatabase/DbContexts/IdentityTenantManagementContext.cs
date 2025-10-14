@@ -14,6 +14,7 @@ public class IdentityTenantManagementContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<IdentityProvider> IdentityProviders => Set<IdentityProvider>();
     public DbSet<ExternalIdentity> ExternalIdentities => Set<ExternalIdentity>();
+    public DbSet<ExternalIdentityEntityType> ExternalIdentityEntityTypes => Set<ExternalIdentityEntityType>();
     public DbSet<TenantUser> TenantUsers => Set<TenantUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -28,10 +29,40 @@ public class IdentityTenantManagementContext : DbContext
             BaseUrl = "http://localhost:8080/",
             CreatedAt = new DateTime(2025, 10, 14, 1, 37, 0, DateTimeKind.Utc)
         });
-        
+
+        // Seed ExternalIdentityEntityTypes
+        modelBuilder.Entity<ExternalIdentityEntityType>().HasData(
+            new ExternalIdentityEntityType
+            {
+                Id = Guid.Parse("86E6890C-0B3F-4278-BD92-A4FD2EA55413"),
+                EntityType = "user"
+            },
+            new ExternalIdentityEntityType
+            {
+                Id = Guid.Parse("F6D6E7FC-8998-4B77-AD31-552E5C76C3DD"),
+                EntityType = "tenant"
+            }
+        );
+
+        // Configure ExternalIdentity relationships
+        modelBuilder.Entity<ExternalIdentity>()
+            .HasOne(e => e.EntityType)
+            .WithMany(et => et.ExternalIdentities)
+            .HasForeignKey(e => e.EntityTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ExternalIdentity>()
+            .HasOne(e => e.Provider)
+            .WithMany(p => p.ExternalIdentities)
+            .HasForeignKey(e => e.ProviderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TenantUser>().HasKey(tu => tu.Id);
+
         modelBuilder.Entity<TenantUser>()
-            .HasKey(ou => new { ou.TenantId, ou.UserId });
-        
+            .HasIndex(tu => new { tu.TenantId, tu.UserId })
+            .IsUnique();
+
         modelBuilder.Entity<TenantDomain>()
             .HasIndex(d => d.Domain)
             .IsUnique();
@@ -53,12 +84,6 @@ public class IdentityTenantManagementContext : DbContext
             .WithMany()
             .HasForeignKey(ou => ou.UserId)
             .OnDelete(DeleteBehavior.NoAction);  
- 
-        // modelBuilder.Entity<User>()
-        //     .HasOne(u => u.Tenant)
-        //     .WithMany(o => o.Users)
-        //     .HasForeignKey(u => u.TenantId)
-        //     .OnDelete(DeleteBehavior.Restrict);
     }
 
 }

@@ -2,6 +2,8 @@ namespace IdentityTenantManagementDatabase.Models;
 
 public class TenantUser
 {
+    
+    public Guid Id { get; set; }
     public Guid TenantId { get; set; }
     public Tenant Tenant { get; set; } = default!;
 

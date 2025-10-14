@@ -3,14 +3,28 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace IdentityTenantManagementDatabase.Migrations
 {
     /// <inheritdoc />
-    public partial class InitalCreate : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "ExternalIdentityEntityTypes",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    EntityType = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExternalIdentityEntityTypes", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "IdentityProviders",
                 columns: table => new
@@ -67,13 +81,13 @@ namespace IdentityTenantManagementDatabase.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     FirstName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     LastName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -82,8 +96,7 @@ namespace IdentityTenantManagementDatabase.Migrations
                         name: "FK_Users_Tenants_TenantId",
                         column: x => x.TenantId,
                         principalTable: "Tenants",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -92,7 +105,7 @@ namespace IdentityTenantManagementDatabase.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ProviderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    EntityType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EntityTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     EntityId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ExternalIdentifier = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -103,11 +116,17 @@ namespace IdentityTenantManagementDatabase.Migrations
                 {
                     table.PrimaryKey("PK_ExternalIdentities", x => x.Id);
                     table.ForeignKey(
+                        name: "FK_ExternalIdentities_ExternalIdentityEntityTypes_EntityTypeId",
+                        column: x => x.EntityTypeId,
+                        principalTable: "ExternalIdentityEntityTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "FK_ExternalIdentities_IdentityProviders_ProviderId",
                         column: x => x.ProviderId,
                         principalTable: "IdentityProviders",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_ExternalIdentities_Tenants_TenantId",
                         column: x => x.TenantId,
@@ -124,6 +143,7 @@ namespace IdentityTenantManagementDatabase.Migrations
                 name: "TenantUsers",
                 columns: table => new
                 {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -131,7 +151,7 @@ namespace IdentityTenantManagementDatabase.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TenantUsers", x => new { x.TenantId, x.UserId });
+                    table.PrimaryKey("PK_TenantUsers", x => x.Id);
                     table.ForeignKey(
                         name: "FK_TenantUsers_Tenants_TenantId",
                         column: x => x.TenantId,
@@ -143,6 +163,25 @@ namespace IdentityTenantManagementDatabase.Migrations
                         principalTable: "Users",
                         principalColumn: "Id");
                 });
+
+            migrationBuilder.InsertData(
+                table: "ExternalIdentityEntityTypes",
+                columns: new[] { "Id", "EntityType" },
+                values: new object[,]
+                {
+                    { new Guid("86e6890c-0b3f-4278-bd92-a4fd2ea55413"), "user" },
+                    { new Guid("f6d6e7fc-8998-4b77-ad31-552e5c76c3dd"), "tenant" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "IdentityProviders",
+                columns: new[] { "Id", "BaseUrl", "CreatedAt", "Name", "ProviderType" },
+                values: new object[] { new Guid("049284c1-ff29-4f28-869f-f64300b69719"), "http://localhost:8080/", new DateTime(2025, 10, 14, 1, 37, 0, 0, DateTimeKind.Utc), "Keycloak", "oidc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalIdentities_EntityTypeId",
+                table: "ExternalIdentities",
+                column: "EntityTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ExternalIdentities_ProviderId",
@@ -171,6 +210,12 @@ namespace IdentityTenantManagementDatabase.Migrations
                 column: "TenantId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TenantUsers_TenantId_UserId",
+                table: "TenantUsers",
+                columns: new[] { "TenantId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TenantUsers_UserId",
                 table: "TenantUsers",
                 column: "UserId");
@@ -192,6 +237,9 @@ namespace IdentityTenantManagementDatabase.Migrations
 
             migrationBuilder.DropTable(
                 name: "TenantUsers");
+
+            migrationBuilder.DropTable(
+                name: "ExternalIdentityEntityTypes");
 
             migrationBuilder.DropTable(
                 name: "IdentityProviders");

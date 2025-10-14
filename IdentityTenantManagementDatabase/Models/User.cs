@@ -2,11 +2,7 @@ namespace IdentityTenantManagementDatabase.Models;
 
 public class User
 {
-    public Guid Id { get; set; }
-    //
-    // public Guid TenantId { get; set; }
-    // public Tenant Tenant { get; set; } = default!;
-
+    public Guid Id { get; set; } 
     public string Email { get; set; } = default!;
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;

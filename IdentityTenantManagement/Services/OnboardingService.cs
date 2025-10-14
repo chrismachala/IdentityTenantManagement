@@ -1,3 +1,4 @@
+using IdentityTenantManagement.Constants;
 using IdentityTenantManagement.Models.Onboarding;
 using IdentityTenantManagement.Models.Organisations;
 using IdentityTenantManagement.Repositories;
@@ -166,29 +167,69 @@ public class OnboardingService : IOnboardingService
 
     private async Task AddUserAndTenantAsync(UserRepresentation userRepresentation, OrganizationRepresentation organizationRepresentation)
     {
+        // Look up the pre-seeded Keycloak identity provider
+        var keycloakProvider = await _unitOfWork.IdentityProviders.GetByNameAsync("Keycloak");
+        if (keycloakProvider == null)
+        {
+            throw new InvalidOperationException("Keycloak identity provider not found in database. Ensure it is pre-seeded.");
+        }
+
+        // Generate internal GUIDs for user and tenant (NOT using Keycloak GUIDs)
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+
+        // Create user with internal GUID
         var user = new User
         {
-            Id = Guid.Parse(userRepresentation.Id),
+            Id = userId,
             Email = userRepresentation.Email,
             FirstName = userRepresentation.FirstName,
             LastName = userRepresentation.LastName
         };
-
         await _unitOfWork.Users.AddAsync(user);
 
+        // Create ExternalIdentity for user linking internal ID to Keycloak GUID
+        var userExternalIdentity = new ExternalIdentity
+        {
+            ProviderId = keycloakProvider.Id,
+            EntityTypeId = ExternalIdentityEntityTypeIds.User,
+            EntityId = userId,
+            ExternalIdentifier = userRepresentation.Id
+        };
+        await _unitOfWork.ExternalIdentities.AddAsync(userExternalIdentity);
+
+        // Create tenant with internal GUID
         var tenant = new Tenant
         {
-            Id = Guid.Parse(organizationRepresentation.Id),
+            Id = tenantId,
+            Name = organizationRepresentation.Name,
             Domains = organizationRepresentation.Domains
                 .Select(d => new TenantDomain
                 {
                     Domain = d.Name,
                     IsPrimary = d == organizationRepresentation.Domains.First()
                 })
-                .ToList(),
-            Name = organizationRepresentation.Name
+                .ToList()
         };
-
         await _unitOfWork.Tenants.AddAsync(tenant);
+
+        // Create ExternalIdentity for tenant linking internal ID to Keycloak GUID
+        var tenantExternalIdentity = new ExternalIdentity
+        {
+            ProviderId = keycloakProvider.Id,
+            EntityTypeId = ExternalIdentityEntityTypeIds.Tenant,
+            EntityId = tenantId,
+            ExternalIdentifier = organizationRepresentation.Id
+        };
+        await _unitOfWork.ExternalIdentities.AddAsync(tenantExternalIdentity);
+
+        // Create TenantUser relationship (many-to-many join)
+        var tenantUser = new TenantUser
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Role = "owner" // First user should be owner
+        };
+        await _unitOfWork.TenantUsers.AddAsync(tenantUser);
     }
 }
