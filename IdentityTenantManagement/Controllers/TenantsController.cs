@@ -1,8 +1,8 @@
-using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Models.Organisations;
-using IdentityTenantManagement.Services.KeycloakServices;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
+using KeycloakAdapter.Models;
+using KeycloakAdapter.Services;
+
 
 namespace IdentityTenantManagement.Controllers;
 
@@ -38,6 +38,13 @@ public class TenantsController : ControllerBase
         return Ok(new {message="User successfully added to Organisation" });
 
     }
+
+    [HttpPost("AddDomainToOrganisation")]
+    public async Task<IActionResult> AddDomainToOrganisation([FromBody] TenantDomainModel body)
+    {
+        throw new NotImplementedException();
+    }
+    
 
     [HttpPost("InviteUser")]
     public async Task<IActionResult> InviteUser([FromBody] InviteUserModel body)

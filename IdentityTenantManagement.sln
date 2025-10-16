@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityTenantManagement.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityTenantManagementDatabase", "IdentityTenantManagementDatabase\IdentityTenantManagementDatabase.csproj", "{F29A2C63-16B7-4F8A-A5C0-6A9145674D3C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeycloakAdapter", "KeycloakAdapter\KeycloakAdapter.csproj", "{B483AF03-1D0F-46EB-B860-0965DA309A67}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{F29A2C63-16B7-4F8A-A5C0-6A9145674D3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F29A2C63-16B7-4F8A-A5C0-6A9145674D3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F29A2C63-16B7-4F8A-A5C0-6A9145674D3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B483AF03-1D0F-46EB-B860-0965DA309A67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B483AF03-1D0F-46EB-B860-0965DA309A67}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B483AF03-1D0F-46EB-B860-0965DA309A67}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B483AF03-1D0F-46EB-B860-0965DA309A67}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

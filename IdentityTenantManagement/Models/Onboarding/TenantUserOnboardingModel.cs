@@ -1,14 +1,13 @@
 using System.ComponentModel.DataAnnotations;
-using IdentityTenantManagement.Models.Organisations;
-using IdentityTenantManagement.Models.Users;
+using KeycloakAdapter.Models;
 
 namespace IdentityTenantManagement.Models.Onboarding;
 
 public class TenantUserOnboardingModel
 {
-    [Required] 
+    [Required]
     public CreateTenantModel CreateTenantModel { get; set; }
     [Required]
-    public CreateUserModel CreateUserModel { get; set; } 
-    
+    public CreateUserModel CreateUserModel { get; set; }
+
 }

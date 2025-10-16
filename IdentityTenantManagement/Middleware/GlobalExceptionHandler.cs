@@ -2,7 +2,9 @@ using System.Net;
 using System.Text.Json;
 using IdentityTenantManagement.Exceptions;
 using IdentityTenantManagement.Models.Responses;
+using KeycloakAdapter.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
+using NotFoundException = IdentityTenantManagement.Exceptions.NotFoundException;
 
 namespace IdentityTenantManagement.Middleware;
 

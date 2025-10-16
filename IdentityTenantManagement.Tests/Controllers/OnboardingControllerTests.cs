@@ -1,8 +1,7 @@
 using IdentityTenantManagement.Controllers;
-using IdentityTenantManagement.Models.Onboarding;
-using IdentityTenantManagement.Models.Organisations;
-using IdentityTenantManagement.Models.Users;
+using IdentityTenantManagement.Models.Onboarding; 
 using IdentityTenantManagement.Services;
+using KeycloakAdapter.Models;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IdentityTenantManagement.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+946088c54b0bec04900a18c67781b0e3cc48615e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d7ebda21838a6d4fa9859b799973de7314f447dc")]
 [assembly: System.Reflection.AssemblyProductAttribute("IdentityTenantManagement.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IdentityTenantManagement.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

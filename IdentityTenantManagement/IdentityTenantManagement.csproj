@@ -33,6 +33,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\IdentityTenantManagementDatabase\IdentityTenantManagementDatabase.csproj" />
+      <ProjectReference Include="..\KeycloakAdapter\KeycloakAdapter.csproj" />
     </ItemGroup>
 
 </Project>

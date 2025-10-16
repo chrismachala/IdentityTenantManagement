@@ -1,9 +1,7 @@
-using IdentityTenantManagement.Helpers;
 using IdentityTenantManagement.Middleware;
-using IdentityTenantManagement.Models.Keycloak;
 using IdentityTenantManagement.Services;
-using IdentityTenantManagement.Services.KeycloakServices;
 using IdentityTenantManagementDatabase.DbContexts;
+using KeycloakAdapter.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,10 +16,6 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 // dev env adds user secrets
 //builder.Configuration.AddUserSecrets<Program>(true);
-
-builder.Services.Configure<KeycloakConfig>(builder.Configuration.GetSection("KeycloakConfig"));
-builder.Services.AddHttpClient();  
-builder.Services.AddScoped<IKCRequestHelper, KCRequestHelper>();
 
 builder.Services.AddKeycloakIntegration(builder.Configuration);
 builder.Services.AddApplicationServices();

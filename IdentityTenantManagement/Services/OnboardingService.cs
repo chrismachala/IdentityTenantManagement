@@ -1,10 +1,10 @@
 using IdentityTenantManagement.Constants;
 using IdentityTenantManagement.Models.Onboarding;
-using IdentityTenantManagement.Models.Organisations;
 using IdentityTenantManagement.Repositories;
-using IdentityTenantManagement.Services.KeycloakServices;
 using IdentityTenantManagementDatabase.Models;
 using IO.Swagger.Model;
+using KeycloakAdapter.Models;
+using KeycloakAdapter.Services;
 
 namespace IdentityTenantManagement.Services;
 

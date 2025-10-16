@@ -1,16 +1,16 @@
 using System.Net;
 using System.Text;
-using System.Text.Json;
-using IdentityTenantManagement.Exceptions;
-using IdentityTenantManagement.Helpers;
-using IdentityTenantManagement.Helpers.ContentBuilders;
-using IdentityTenantManagement.Models.Keycloak;
-using IdentityTenantManagement.Models.Organisations;
-using IdentityTenantManagement.Services.KeycloakServices;
+using System.Text.Json;  
 using IO.Swagger.Model;
+using KeycloakAdapter.Exceptions;
+using KeycloakAdapter.Helpers;
+using KeycloakAdapter.Helpers.ContentBuilders;
+using KeycloakAdapter.Models;
+using KeycloakAdapter.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using NotFoundException = IdentityTenantManagement.Exceptions.NotFoundException;
 
 namespace IdentityTenantManagement.Tests.Services.KeycloakServices;
 

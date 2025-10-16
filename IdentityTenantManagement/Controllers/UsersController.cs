@@ -1,6 +1,5 @@
-using IdentityTenantManagement.Models.Organisations;
-using IdentityTenantManagement.Models.Users;
-using IdentityTenantManagement.Services.KeycloakServices;
+using KeycloakAdapter.Models;
+using KeycloakAdapter.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdentityTenantManagement.Controllers;

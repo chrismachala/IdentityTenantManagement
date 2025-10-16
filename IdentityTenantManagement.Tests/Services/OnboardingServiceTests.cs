@@ -1,12 +1,11 @@
 using IdentityTenantManagement.Constants;
-using IdentityTenantManagement.Models.Onboarding;
-using IdentityTenantManagement.Models.Organisations;
-using IdentityTenantManagement.Models.Users;
+using IdentityTenantManagement.Models.Onboarding; 
 using IdentityTenantManagement.Repositories;
-using IdentityTenantManagement.Services;
-using IdentityTenantManagement.Services.KeycloakServices;
+using IdentityTenantManagement.Services; 
 using IdentityTenantManagementDatabase.Models;
 using IO.Swagger.Model;
+using KeycloakAdapter.Models;
+using KeycloakAdapter.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
