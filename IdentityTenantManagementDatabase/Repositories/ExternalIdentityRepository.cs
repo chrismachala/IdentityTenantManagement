@@ -2,7 +2,7 @@ using IdentityTenantManagementDatabase.DbContexts;
 using IdentityTenantManagementDatabase.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace IdentityTenantManagement.Repositories;
+namespace IdentityTenantManagementDatabase.Repositories;
 
 public class ExternalIdentityRepository : IExternalIdentityRepository
 {
@@ -47,9 +47,9 @@ public class ExternalIdentityRepository : IExternalIdentityRepository
         }
     }
 
-    public Task<bool> ExistsAsync(Guid id)
+    public async Task<bool> ExistsAsync(Guid id)
     {
-        throw new NotImplementedException();
+        return await _context.ExternalIdentities.AnyAsync(e => e.Id == id);
     }
 
     public async Task<ExternalIdentity?> GetByExternalIdentifierAsync(string externalIdentifier, Guid providerId)

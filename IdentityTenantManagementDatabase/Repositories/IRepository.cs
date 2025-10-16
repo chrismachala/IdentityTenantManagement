@@ -1,4 +1,4 @@
-namespace IdentityTenantManagement.Repositories;
+namespace IdentityTenantManagementDatabase.Repositories;
 
 public interface IRepository<T> where T : class
 {

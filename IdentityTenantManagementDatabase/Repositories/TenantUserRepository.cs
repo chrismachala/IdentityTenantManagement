@@ -2,7 +2,7 @@ using IdentityTenantManagementDatabase.DbContexts;
 using IdentityTenantManagementDatabase.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace IdentityTenantManagement.Repositories;
+namespace IdentityTenantManagementDatabase.Repositories;
 
 public class TenantUserRepository : ITenantUserRepository
 {
@@ -49,9 +49,9 @@ public class TenantUserRepository : ITenantUserRepository
         }
     }
 
-    public Task<bool> ExistsAsync(Guid id)
+    public async Task<bool> ExistsAsync(Guid id)
     {
-        throw new NotImplementedException();
+        return await _context.TenantUsers.AnyAsync(tu => tu.Id == id);
     }
 
     public async Task<IEnumerable<TenantUser>> GetByTenantIdAsync(Guid tenantId)

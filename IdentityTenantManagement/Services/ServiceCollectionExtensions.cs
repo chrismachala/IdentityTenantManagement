@@ -1,4 +1,4 @@
-using IdentityTenantManagement.Repositories;
+using IdentityTenantManagementDatabase.Repositories;
 
 namespace IdentityTenantManagement.Services;
 

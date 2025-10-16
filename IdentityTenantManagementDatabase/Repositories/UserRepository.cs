@@ -1,9 +1,8 @@
-using IdentityTenantManagement.Exceptions;
 using IdentityTenantManagementDatabase.DbContexts;
 using IdentityTenantManagementDatabase.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace IdentityTenantManagement.Repositories;
+namespace IdentityTenantManagementDatabase.Repositories;
 
 public class UserRepository : IUserRepository
 {
@@ -52,7 +51,7 @@ public class UserRepository : IUserRepository
         var user = await GetByIdAsync(id);
         if (user == null)
         {
-            throw new NotFoundException(nameof(User), id.ToString());
+            throw new KeyNotFoundException($"User with ID {id} was not found.");
         }
 
         _context.Users.Remove(user);

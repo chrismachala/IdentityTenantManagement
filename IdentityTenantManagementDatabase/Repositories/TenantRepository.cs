@@ -1,9 +1,8 @@
-using IdentityTenantManagement.Exceptions;
 using IdentityTenantManagementDatabase.DbContexts;
 using IdentityTenantManagementDatabase.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace IdentityTenantManagement.Repositories;
+namespace IdentityTenantManagementDatabase.Repositories;
 
 public class TenantRepository : ITenantRepository
 {
@@ -29,8 +28,6 @@ public class TenantRepository : ITenantRepository
         return await _context.Tenants
             .Include(t => t.Domains)
             .FirstOrDefaultAsync(t => t.Domains.Any(d => d.Domain == domain));
-        // return await _context.Tenants
-        //     .FirstOrDefaultAsync(t => t.Domains == domain);
     }
 
     public async Task<Tenant?> GetByNameAsync(string name)
@@ -54,7 +51,7 @@ public class TenantRepository : ITenantRepository
         var tenant = await GetByIdAsync(id);
         if (tenant == null)
         {
-            throw new NotFoundException(nameof(Tenant), id.ToString());
+            throw new KeyNotFoundException($"Tenant with ID {id} was not found.");
         }
 
         _context.Tenants.Remove(tenant);

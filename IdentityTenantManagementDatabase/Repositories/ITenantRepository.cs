@@ -1,8 +1,6 @@
- 
-
 using IdentityTenantManagementDatabase.Models;
 
-namespace IdentityTenantManagement.Repositories;
+namespace IdentityTenantManagementDatabase.Repositories;
 
 public interface ITenantRepository : IRepository<Tenant>
 {

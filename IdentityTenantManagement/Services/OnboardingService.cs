@@ -1,7 +1,7 @@
 using IdentityTenantManagement.Constants;
 using IdentityTenantManagement.Models.Onboarding;
-using IdentityTenantManagement.Repositories;
 using IdentityTenantManagementDatabase.Models;
+using IdentityTenantManagementDatabase.Repositories;
 using IO.Swagger.Model;
 using KeycloakAdapter.Models;
 using KeycloakAdapter.Services;

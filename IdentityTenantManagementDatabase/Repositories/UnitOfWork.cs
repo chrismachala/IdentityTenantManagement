@@ -1,7 +1,7 @@
 using IdentityTenantManagementDatabase.DbContexts;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace IdentityTenantManagement.Repositories;
+namespace IdentityTenantManagementDatabase.Repositories;
 
 public class UnitOfWork : IUnitOfWork
 {
