@@ -1,0 +1,156 @@
+@page "/onboarding"
+@using KeycloakAdapter.Models
+@using IdentityTenantManagement.BlazorApp.Services
+@inject OnboardingApiClient OnboardingApi
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Organization Onboarding</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Organization Onboarding</h3>
+                    <p class="mb-0 small">Set up your organization and admin user</p>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@model" OnValidSubmit="HandleSubmit" FormName="onboardingForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-3" />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                @errorMessage
+                                <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                            </div>
+                        }
+
+                        @if (isSubmitted)
+                        {
+                            <div class="alert alert-success" role="alert">
+                                <h4 class="alert-heading">Success!</h4>
+                                <p>Your organization has been successfully onboarded.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Organization Details Section -->
+                            <div class="mb-4">
+                                <h5 class="border-bottom pb-2 mb-3">Organization Details</h5>
+
+                                <div class="mb-3">
+                                    <label for="tenantName" class="form-label">Organization Name</label>
+                                    <InputText id="tenantName" class="form-control" @bind-Value="model.CreateTenantModel.Name" placeholder="Acme Corporation" />
+                                    <ValidationMessage For="@(() => model.CreateTenantModel.Name)" class="text-danger" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="tenantDomain" class="form-label">Domain</label>
+                                    <InputText id="tenantDomain" class="form-control" @bind-Value="model.CreateTenantModel.Domain" placeholder="acme.com" />
+                                    <ValidationMessage For="@(() => model.CreateTenantModel.Domain)" class="text-danger" />
+                                    <div class="form-text">Enter your organization's domain name</div>
+                                </div>
+                            </div>
+
+                            <!-- Admin User Section -->
+                            <div class="mb-4">
+                                <h5 class="border-bottom pb-2 mb-3">Administrator Account</h5>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="firstName" class="form-label">First Name</label>
+                                        <InputText id="firstName" class="form-control" @bind-Value="model.CreateUserModel.FirstName" placeholder="John" />
+                                        <ValidationMessage For="@(() => model.CreateUserModel.FirstName)" class="text-danger" />
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="lastName" class="form-label">Last Name</label>
+                                        <InputText id="lastName" class="form-control" @bind-Value="model.CreateUserModel.LastName" placeholder="Doe" />
+                                        <ValidationMessage For="@(() => model.CreateUserModel.LastName)" class="text-danger" />
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <InputText id="username" class="form-control" @bind-Value="model.CreateUserModel.UserName" placeholder="johndoe" />
+                                    <ValidationMessage For="@(() => model.CreateUserModel.UserName)" class="text-danger" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <InputText id="email" type="email" class="form-control" @bind-Value="model.CreateUserModel.Email" placeholder="john.doe@acme.com" />
+                                    <ValidationMessage For="@(() => model.CreateUserModel.Email)" class="text-danger" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Password</label>
+                                    <InputText id="password" type="password" class="form-control" @bind-Value="model.CreateUserModel.Password" />
+                                    <ValidationMessage For="@(() => model.CreateUserModel.Password)" class="text-danger" />
+                                    <div class="form-text">Must be at least 8 characters long</div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg" disabled="@isSubmitting">
+                                    @if (isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Submitting...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Complete Onboarding</span>
+                                    }
+                                </button>
+                            </div>
+                        }
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private TenantUserOnboardingModel model = new();
+    private bool isSubmitting = false;
+    private bool isSubmitted = false;
+    private string errorMessage = string.Empty;
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var success = await OnboardingApi.OnboardOrganisationAsync(model);
+
+            if (success)
+            {
+                isSubmitted = true;
+                StateHasChanged();
+
+                // Wait a moment to show success message, then redirect
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Failed to onboard organization. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
