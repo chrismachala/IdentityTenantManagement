@@ -129,7 +129,7 @@ public class KCUserServiceTests
             .ReturnsAsync(httpResponse);
 
         // Act & Assert
-        Assert.ThrowsAsync<NotFoundException>(async () => await _service.GetUserByEmailAsync(email));
+        Assert.ThrowsAsync<KeycloakAdapter.Exceptions.NotFoundException>(async () => await _service.GetUserByEmailAsync(email));
     }
 
     [Test]

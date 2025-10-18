@@ -206,7 +206,7 @@ _service = new KCOrganisationService(_mockOptions.Object, _mockRequestHelper.Obj
 
         // Act & Assert
         Assert.That(async () => await _service.GetOrganisationByDomain(domain),
-            Throws.TypeOf<NotFoundException>()
+            Throws.TypeOf<KeycloakAdapter.Exceptions.NotFoundException>()
                 .With.Message.Contains("Organization"));
     }
 
