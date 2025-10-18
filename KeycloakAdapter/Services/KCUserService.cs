@@ -11,6 +11,7 @@ public interface IKCUserService
     Task CreateUserAsync(CreateUserModel model);
     Task<UserRepresentation> GetUserByEmailAsync(string email);
     Task DeleteUserAsync(string userId);
+    Task<List<UserRepresentation>> GetAllUsersAsync();
 }
 
 public class KCUserService : KeycloakServiceBase, IKCUserService
@@ -73,5 +74,16 @@ public class KCUserService : KeycloakServiceBase, IKCUserService
         await DeleteAsync(endpoint);
 
         Logger.LogInformation("Successfully deleted user: {UserId}", userId);
+    }
+
+    public async Task<List<UserRepresentation>> GetAllUsersAsync()
+    {
+        Logger.LogInformation("Getting all users");
+
+        var endpoint = BuildEndpoint("users");
+        var users = await GetAsync<List<UserRepresentation>>(endpoint);
+
+        Logger.LogInformation("Found {Count} users", users?.Count ?? 0);
+        return users ?? new List<UserRepresentation>();
     }
 }

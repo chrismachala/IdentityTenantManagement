@@ -1,34 +1,111 @@
 ﻿@page "/"
+@using IdentityTenantManagement.BlazorApp.Services
+@inject AuthenticationService AuthService
+@implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
 <div class="container mt-5">
-    <div class="row">
-        <div class="col-12 text-center">
-            <h1 class="display-4 mb-4">Identity Tenant Management</h1>
-            <p class="lead mb-5">Manage your organization identities and access control</p>
-        </div>
-    </div>
-
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm hover-card">
-                <div class="card-body text-center p-5">
-                    <div class="mb-4">
-                        <span class="bi bi-building-fill-add" style="font-size: 4rem; color: var(--bs-primary);"></span>
-                    </div>
-                    <h3 class="card-title mb-3">Organization Onboarding</h3>
-                    <p class="card-text text-muted mb-4">
-                        Set up a new organization with a dedicated realm, administrator account, and initial configuration.
+    @if (AuthService.CurrentState.IsAuthenticated && AuthService.CurrentState.UserInfo != null)
+    {
+        <!-- Authenticated User View -->
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="alert alert-success border-0 shadow-sm">
+                    <h4 class="alert-heading">
+                        <span class="bi bi-check-circle-fill me-2"></span>
+                        Welcome back, @AuthService.CurrentState.UserInfo.FirstName!
+                    </h4>
+                    <p class="mb-0">
+                        You are logged in to <strong>@AuthService.CurrentState.UserInfo.Organization</strong>
                     </p>
-                    <a href="/onboarding" class="btn btn-primary btn-lg">
-                        Get Started
-                        <span class="bi bi-arrow-right ms-2"></span>
-                    </a>
                 </div>
             </div>
         </div>
-    </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm hover-card h-100">
+                    <div class="card-body text-center p-4">
+                        <span class="bi bi-people-fill text-primary" style="font-size: 3rem;"></span>
+                        <h5 class="card-title mt-3">Manage Users</h5>
+                        <p class="card-text text-muted">Add, edit, or remove users from your organization</p>
+                        <a href="/users" class="btn btn-outline-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm hover-card h-100">
+                    <div class="card-body text-center p-4">
+                        <span class="bi bi-shield-lock-fill text-success" style="font-size: 3rem;"></span>
+                        <h5 class="card-title mt-3">Roles & Permissions</h5>
+                        <p class="card-text text-muted">Configure access control and permissions</p>
+                        <a href="/roles" class="btn btn-outline-success">Configure</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm hover-card h-100">
+                    <div class="card-body text-center p-4">
+                        <span class="bi bi-gear-fill text-info" style="font-size: 3rem;"></span>
+                        <h5 class="card-title mt-3">Settings</h5>
+                        <p class="card-text text-muted">Update organization settings and preferences</p>
+                        <a href="/settings" class="btn btn-outline-info">Settings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Non-authenticated User View -->
+        <div class="row">
+            <div class="col-12 text-center">
+                <h1 class="display-4 mb-4">Identity Tenant Management</h1>
+                <p class="lead mb-5">Manage your organization identities and access control</p>
+            </div>
+        </div>
+
+        <div class="row justify-content-center g-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm hover-card h-100">
+                    <div class="card-body text-center p-5">
+                        <div class="mb-4">
+                            <span class="bi bi-box-arrow-in-right" style="font-size: 4rem; color: var(--bs-success);"></span>
+                        </div>
+                        <h3 class="card-title mb-3">Sign In</h3>
+                        <p class="card-text text-muted mb-4">
+                            Access your organization's identity management portal
+                        </p>
+                        <a href="/login" class="btn btn-success btn-lg">
+                            <span class="bi bi-box-arrow-in-right me-2"></span>
+                            Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm hover-card h-100">
+                    <div class="card-body text-center p-5">
+                        <div class="mb-4">
+                            <span class="bi bi-building-fill-add" style="font-size: 4rem; color: var(--bs-primary);"></span>
+                        </div>
+                        <h3 class="card-title mb-3">Create Organization</h3>
+                        <p class="card-text text-muted mb-4">
+                            Set up a new organization with a dedicated realm and admin account
+                        </p>
+                        <a href="/onboarding" class="btn btn-primary btn-lg">
+                            <span class="bi bi-building-fill-add me-2"></span>
+                            Get Started
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <style>
@@ -41,3 +118,15 @@
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
     }
 </style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthenticationStateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthenticationStateChanged -= StateHasChanged;
+    }
+}

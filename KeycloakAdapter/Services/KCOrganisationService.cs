@@ -14,6 +14,7 @@ public interface IKCOrganisationService
     Task InviteUserToOrganisationAsync(InviteUserModel model);
     Task DeleteOrganisationAsync(string orgId);
     Task RemoveUserFromOrganisationAsync(string userId, string orgId);
+    Task<List<OrganizationRepresentation>> GetAllOrganisationsAsync();
 }
 
 public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
@@ -109,5 +110,16 @@ public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
         await DeleteAsync(endpoint);
 
         Logger.LogInformation("Successfully removed user {UserId} from organisation {OrgId}", userId, orgId);
+    }
+
+    public async Task<List<OrganizationRepresentation>> GetAllOrganisationsAsync()
+    {
+        Logger.LogInformation("Getting all organisations");
+
+        var endpoint = BuildEndpoint("organizations");
+        var orgs = await GetAsync<List<OrganizationRepresentation>>(endpoint);
+
+        Logger.LogInformation("Found {Count} organisations", orgs?.Count ?? 0);
+        return orgs ?? new List<OrganizationRepresentation>();
     }
 }

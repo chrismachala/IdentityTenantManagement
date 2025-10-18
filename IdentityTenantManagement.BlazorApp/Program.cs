@@ -8,12 +8,25 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Configure HttpClient for API calls
+var apiBaseUrl = builder.Configuration.GetValue<string>("ApiSettings:BaseUrl") ?? "https://localhost:5280";
+
 builder.Services.AddHttpClient<OnboardingApiClient>(client =>
 {
-    // Configure the base address from appsettings or use default
-    // 
-    var apiBaseUrl = builder.Configuration.GetValue<string>("ApiSettings:BaseUrl") ?? "https://localhost:5280";
     client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Register named HttpClient for authentication
+builder.Services.AddHttpClient("AuthenticationApi", client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// Register authentication service as singleton to maintain state
+builder.Services.AddSingleton<AuthenticationService>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("AuthenticationApi");
+    return new AuthenticationService(httpClient);
 });
 
 var app = builder.Build();

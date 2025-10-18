@@ -1,4 +1,8 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+@using IdentityTenantManagement.BlazorApp.Services
+@inject AuthenticationService AuthService
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Identity Tenant Management</a>
     </div>
@@ -14,11 +18,72 @@
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="onboarding">
-                <span class="bi bi-building-fill-add" aria-hidden="true"></span> Onboarding
-            </NavLink>
-        </div>
+        @if (AuthService.CurrentState.IsAuthenticated)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="dashboard">
+                    <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+                </NavLink>
+            </div>
+        }
+        else
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="onboarding">
+                    <span class="bi bi-building-fill-add" aria-hidden="true"></span> Onboarding
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login">
+                    <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> Login
+                </NavLink>
+            </div>
+        }
     </nav>
+
+    @if (AuthService.CurrentState.IsAuthenticated && AuthService.CurrentState.UserInfo != null)
+    {
+        <div class="nav-user-info px-3 mt-auto mb-3">
+            <hr class="mb-3" />
+            <div class="user-card p-3 bg-dark rounded">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="bi bi-building-fill text-primary me-2" style="font-size: 1.2rem;"></span>
+                    <div class="flex-grow-1 text-truncate">
+                        <small class="text-muted d-block">Organization</small>
+                        <strong class="d-block text-truncate">@AuthService.CurrentState.UserInfo.Organization</strong>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="bi bi-person-fill text-info me-2" style="font-size: 1.2rem;"></span>
+                    <div class="flex-grow-1 text-truncate">
+                        <small class="text-muted d-block">User</small>
+                        <strong class="d-block text-truncate">@AuthService.CurrentState.UserInfo.FirstName @AuthService.CurrentState.UserInfo.LastName</strong>
+                    </div>
+                </div>
+                <button class="btn btn-outline-light btn-sm w-100" @onclick="HandleLogout">
+                    <span class="bi bi-box-arrow-right me-1"></span> Logout
+                </button>
+            </div>
+        </div>
+    }
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthenticationStateChanged += StateHasChanged;
+    }
+
+    private void HandleLogout()
+    {
+        AuthService.Logout();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthenticationStateChanged -= StateHasChanged;
+    }
+}
 

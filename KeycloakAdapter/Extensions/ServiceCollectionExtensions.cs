@@ -16,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IKCRequestHelper, KCRequestHelper>();
         services.AddScoped<IKCOrganisationService, KCOrganisationService>();
         services.AddScoped<IKCUserService, KCUserService>();
+        services.AddScoped<IKCAuthenticationService, KCAuthenticationService>();
 
         return services;
     }

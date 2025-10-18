@@ -24,6 +24,23 @@ namespace KeycloakAdapter.Helpers
             });
         }
 
+        public static string BuildQueryForTenantSearchByName(
+            string? search,
+            bool? exact = true,
+            bool? briefRepresentation = null,
+            int? first = null,
+            int? max = null)
+        {
+            return BuildQuery(new
+            {
+                search,
+                exact,
+                briefRepresentation,
+                first,
+                max
+            });
+        }
+
         public static string BuildQueryForUserSearchByEmail(
             string? email,
             bool? exact = null,
