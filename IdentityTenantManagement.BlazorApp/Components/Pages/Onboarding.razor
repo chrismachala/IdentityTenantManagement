@@ -9,13 +9,16 @@
 
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Organization Onboarding</h3>
-                    <p class="mb-0 small">Set up your organization and admin user</p>
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white py-4">
+                    <div class="text-center">
+                        <span class="bi bi-building-fill-add" style="font-size: 3rem;"></span>
+                        <h2 class="mb-2 mt-3">Organization Onboarding</h2>
+                        <p class="mb-0 opacity-90">Set up your organization and administrator account</p>
+                    </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4 p-md-5">
                     <EditForm Model="@model" OnValidSubmit="HandleSubmit" FormName="onboardingForm">
                         <DataAnnotationsValidator />
                         <ValidationSummary class="text-danger mb-3" />
@@ -30,16 +33,23 @@
 
                         @if (isSubmitted)
                         {
-                            <div class="alert alert-success" role="alert">
-                                <h4 class="alert-heading">Success!</h4>
-                                <p>Your organization has been successfully onboarded.</p>
+                            <div class="alert alert-success border-0 shadow-sm" role="alert">
+                                <div class="text-center">
+                                    <span class="bi bi-check-circle-fill" style="font-size: 3rem; color: #198754;"></span>
+                                    <h4 class="alert-heading mt-3">Success!</h4>
+                                    <p class="mb-0">Your organization has been successfully onboarded.</p>
+                                </div>
                             </div>
                         }
                         else
                         {
                             <!-- Organization Details Section -->
-                            <div class="mb-4">
-                                <h5 class="border-bottom pb-2 mb-3">Organization Details</h5>
+                            <div class="mb-5">
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="bi bi-building me-2 text-primary" style="font-size: 1.5rem;"></span>
+                                    <h5 class="mb-0">Organization Details</h5>
+                                </div>
+                                <hr class="mt-2 mb-4" />
 
                                 <div class="mb-3">
                                     <label for="tenantName" class="form-label">Organization Name</label>
@@ -56,8 +66,12 @@
                             </div>
 
                             <!-- Admin User Section -->
-                            <div class="mb-4">
-                                <h5 class="border-bottom pb-2 mb-3">Administrator Account</h5>
+                            <div class="mb-5">
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="bi bi-person-fill-gear me-2 text-primary" style="font-size: 1.5rem;"></span>
+                                    <h5 class="mb-0">Administrator Account</h5>
+                                </div>
+                                <hr class="mt-2 mb-4" />
 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
