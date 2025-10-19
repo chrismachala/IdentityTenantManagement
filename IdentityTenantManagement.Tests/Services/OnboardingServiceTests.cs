@@ -26,6 +26,8 @@ namespace IdentityTenantManagement.Tests.Services
         private Mock<ILogger<OnboardingService>> _mockLogger;
         private OnboardingService _service;
         private IdentityProvider _keycloakProvider;
+        private Mock<IRoleService> _mockRoleService;
+        private Role _orgAdminRole;
 
         [SetUp]
         public void Setup()
@@ -39,6 +41,7 @@ namespace IdentityTenantManagement.Tests.Services
             _mockIdentityProviderRepository = new Mock<IIdentityProviderRepository>();
             _mockTenantUserRepository = new Mock<ITenantUserRepository>();
             _mockLogger = new Mock<ILogger<OnboardingService>>();
+            _mockRoleService = new Mock<IRoleService>();
 
             // Set up the pre-seeded Keycloak provider
             _keycloakProvider = new IdentityProvider
@@ -46,6 +49,15 @@ namespace IdentityTenantManagement.Tests.Services
                 Id = Guid.Parse("049284C1-FF29-4F28-869F-F64300B69719"),
                 Name = "Keycloak",
                 ProviderType = "oidc"
+            };
+
+            // Set up the pre-seeded org-admin role
+            _orgAdminRole = new Role
+            {
+                Id = Guid.Parse("A1B2C3D4-E5F6-7890-ABCD-EF1234567890"),
+                Name = "org-admin",
+                DisplayName = "Organization Administrator",
+                Description = "Full access to organization settings and user management"
             };
 
             // Set up repository properties on UnitOfWork
@@ -60,11 +72,17 @@ namespace IdentityTenantManagement.Tests.Services
                 .Setup(x => x.GetByNameAsync("Keycloak"))
                 .ReturnsAsync(_keycloakProvider);
 
+            // Mock RoleService to return org-admin role
+            _mockRoleService
+                .Setup(x => x.GetRoleByNameAsync("org-admin"))
+                .ReturnsAsync(_orgAdminRole);
+
             _service = new OnboardingService(
                 _mockOrgService.Object,
                 _mockUserService.Object,
                 _mockUnitOfWork.Object,
-                _mockLogger.Object
+                _mockLogger.Object,
+                _mockRoleService.Object
             );
         }
 
@@ -158,9 +176,9 @@ namespace IdentityTenantManagement.Tests.Services
                 e.ProviderId == _keycloakProvider.Id
             )), Times.Once);
 
-            // Verify TenantUser relationship is created
+            // Verify TenantUser relationship is created with org-admin role
             _mockTenantUserRepository.Verify(x => x.AddAsync(It.Is<TenantUser>(tu =>
-                tu.Role == "owner"
+                tu.RoleId == _orgAdminRole.Id
             )), Times.Once);
         }
 

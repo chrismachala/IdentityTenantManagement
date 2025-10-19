@@ -9,6 +9,8 @@ public interface IUnitOfWork : IDisposable
     IExternalIdentityRepository ExternalIdentities { get; }
     IIdentityProviderRepository IdentityProviders { get; }
     ITenantUserRepository TenantUsers { get; }
+    IRoleRepository Roles { get; }
+    IPermissionRepository Permissions { get; }
 
     /// <summary>
     /// Saves all changes made in this unit of work to the database.

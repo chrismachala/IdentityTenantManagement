@@ -12,10 +12,14 @@ public static class ServiceCollectionExtensions
         // Register repositories (if needed for direct injection)
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<ITenantUserRepository, TenantUserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
 
         // Register application services
         services.AddScoped<IOnboardingService, OnboardingService>();
-        // Add other core business services here
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<PermissionService>();
 
         return services;
     }

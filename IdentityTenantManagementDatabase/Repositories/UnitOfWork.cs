@@ -12,6 +12,8 @@ public class UnitOfWork : IUnitOfWork
     private IExternalIdentityRepository? _externalIdentityRepository;
     private IIdentityProviderRepository? _identityProviderRepository;
     private ITenantUserRepository? _tenantUserRepository;
+    private IRoleRepository? _roleRepository;
+    private IPermissionRepository? _permissionRepository;
 
     public UnitOfWork(IdentityTenantManagementContext context)
     {
@@ -27,6 +29,10 @@ public class UnitOfWork : IUnitOfWork
     public IIdentityProviderRepository IdentityProviders => _identityProviderRepository ??= new IdentityProviderRepository(_context);
 
     public ITenantUserRepository TenantUsers => _tenantUserRepository ??= new TenantUserRepository(_context);
+
+    public IRoleRepository Roles => _roleRepository ??= new RoleRepository(_context);
+
+    public IPermissionRepository Permissions => _permissionRepository ??= new PermissionRepository(_context);
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

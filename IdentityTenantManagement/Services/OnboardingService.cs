@@ -19,17 +19,20 @@ public class OnboardingService : IOnboardingService
     private readonly IKCUserService _kcUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<OnboardingService> _logger;
+    private readonly IRoleService _roleService;
 
     public OnboardingService(
         IKCOrganisationService kcOrganisationService,
         IKCUserService kcUserService,
         IUnitOfWork unitOfWork,
-        ILogger<OnboardingService> logger)
+        ILogger<OnboardingService> logger,
+        IRoleService roleService)
     {
         _kcOrganisationService = kcOrganisationService;
         _kcUserService = kcUserService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _roleService = roleService;
     }
 
     public async Task OnboardOrganisationAsync(TenantUserOnboardingModel model)
@@ -223,12 +226,19 @@ public class OnboardingService : IOnboardingService
         };
         await _unitOfWork.ExternalIdentities.AddAsync(tenantExternalIdentity);
 
-        // Create TenantUser relationship (many-to-many join)
+        // Get org-admin role for first user (they created the organization)
+        var orgAdminRole = await _roleService.GetRoleByNameAsync("org-admin");
+        if (orgAdminRole == null)
+        {
+            throw new InvalidOperationException("org-admin role not found in database. Ensure roles are pre-seeded.");
+        }
+
+        // Create TenantUser relationship (many-to-many join) with org-admin role
         var tenantUser = new TenantUser
         {
             TenantId = tenantId,
             UserId = userId,
-            Role = "owner" // First user should be owner
+            RoleId = orgAdminRole.Id // First user should be org-admin
         };
         await _unitOfWork.TenantUsers.AddAsync(tenantUser);
     }

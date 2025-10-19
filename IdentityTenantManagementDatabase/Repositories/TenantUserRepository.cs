@@ -18,6 +18,9 @@ public class TenantUserRepository : ITenantUserRepository
         return await _context.TenantUsers
             .Include(tu => tu.Tenant)
             .Include(tu => tu.User)
+            .Include(tu => tu.Role)
+                .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(tu => tu.Id == id);
     }
 
@@ -26,6 +29,9 @@ public class TenantUserRepository : ITenantUserRepository
         return await _context.TenantUsers
             .Include(tu => tu.Tenant)
             .Include(tu => tu.User)
+            .Include(tu => tu.Role)
+                .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
             .ToListAsync();
     }
 
@@ -58,6 +64,9 @@ public class TenantUserRepository : ITenantUserRepository
     {
         return await _context.TenantUsers
             .Include(tu => tu.User)
+            .Include(tu => tu.Role)
+                .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
             .Where(tu => tu.TenantId == tenantId)
             .ToListAsync();
     }
@@ -66,7 +75,48 @@ public class TenantUserRepository : ITenantUserRepository
     {
         return await _context.TenantUsers
             .Include(tu => tu.Tenant)
+            .Include(tu => tu.Role)
+                .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
             .Where(tu => tu.UserId == userId)
             .ToListAsync();
+    }
+
+    public async Task<TenantUser?> GetByTenantAndUserIdAsync(Guid tenantId, Guid userId)
+    {
+        return await _context.TenantUsers
+            .Include(tu => tu.Tenant)
+            .Include(tu => tu.User)
+            .Include(tu => tu.Role)
+                .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId);
+    }
+
+    public async Task<List<string>> GetUserPermissionsAsync(Guid tenantId, Guid userId)
+    {
+        var tenantUser = await _context.TenantUsers
+            .Include(tu => tu.Role)
+                .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId);
+
+        if (tenantUser == null)
+            return new List<string>();
+
+        // Get permissions from role
+        var rolePermissions = tenantUser.Role.RolePermissions
+            .Select(rp => rp.Permission.Name)
+            .ToList();
+
+        // Get user-specific permissions
+        var userPermissions = await _context.UserPermissions
+            .Where(up => up.TenantUserId == tenantUser.Id)
+            .Include(up => up.Permission)
+            .Select(up => up.Permission.Name)
+            .ToListAsync();
+
+        // Combine and return distinct permissions
+        return rolePermissions.Union(userPermissions).Distinct().ToList();
     }
 }
