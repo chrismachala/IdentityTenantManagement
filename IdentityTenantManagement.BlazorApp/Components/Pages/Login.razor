@@ -6,15 +6,16 @@
 
 <PageTitle>Login</PageTitle>
 
-<div class="container">
-    <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
-        <div class="col-md-5 col-lg-4">
-            <div class="card shadow-lg border-0">
-                <div class="card-body p-5">
+<div style="display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 4rem); padding: 2rem;">
+    <div style="width: 100%; max-width: 450px;">
+        <div class="card" style="box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);">
+                <div class="card-body" style="padding: 2.5rem;">
                     <div class="text-center mb-4">
-                        <span class="bi bi-shield-lock-fill text-primary" style="font-size: 3.5rem;"></span>
-                        <h2 class="mt-3 mb-2">Welcome Back</h2>
-                        <p class="text-muted">Sign in to your account</p>
+                        <svg width="64" height="64" fill="none" stroke="var(--primary)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                        <h2 class="mb-2">Welcome Back</h2>
+                        <p class="text-muted" style="margin: 0;">Sign in to your account</p>
                     </div>
 
                     <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
@@ -23,16 +24,16 @@
 
                         @if (!string.IsNullOrEmpty(errorMessage))
                         {
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <span class="bi bi-exclamation-triangle-fill me-2"></span>
-                                @errorMessage
-                                <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                            <div class="alert alert-danger" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>@errorMessage</span>
                             </div>
                         }
 
                         <div class="mb-3">
-                            <label for="organization" class="form-label fw-semibold">
-                                <span class="bi bi-building me-1"></span>
+                            <label for="organization" class="form-label">
                                 Organization
                             </label>
                             <InputText id="organization"
@@ -44,20 +45,18 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="username" class="form-label fw-semibold">
-                                <span class="bi bi-person-fill me-1"></span>
+                            <label for="username" class="form-label">
                                 Username
                             </label>
                             <InputText id="username"
                                        class="form-control form-control-lg"
                                        @bind-Value="loginModel.Username"
                                        placeholder="johndoe" />
-                            <ValidationMessage For="@(() => loginModel.Username)" class="text-danger small" />
+                            <ValidationMessage For="@(() => loginModel.Username)" class="validation-message" />
                         </div>
 
                         <div class="mb-4">
-                            <label for="password" class="form-label fw-semibold">
-                                <span class="bi bi-lock-fill me-1"></span>
+                            <label for="password" class="form-label">
                                 Password
                             </label>
                             <InputText id="password"
@@ -65,39 +64,36 @@
                                        class="form-control form-control-lg"
                                        @bind-Value="loginModel.Password"
                                        placeholder="••••••••" />
-                            <ValidationMessage For="@(() => loginModel.Password)" class="text-danger small" />
+                            <ValidationMessage For="@(() => loginModel.Password)" class="validation-message" />
                         </div>
 
-                        <div class="d-grid gap-2 mb-3">
-                            <button type="submit" class="btn btn-primary btn-lg" disabled="@isLoggingIn">
+                        <div style="margin-bottom: 1rem;">
+                            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;" disabled="@isLoggingIn">
                                 @if (isLoggingIn)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span class="spinner-border spinner-border-sm" style="margin-right: 0.5rem;" role="status" aria-hidden="true"></span>
                                     <span>Signing in...</span>
                                 }
                                 else
                                 {
-                                    <span class="bi bi-box-arrow-in-right me-2"></span>
                                     <span>Sign In</span>
                                 }
                             </button>
                         </div>
                     </EditForm>
 
-                    <hr class="my-4" />
-
-                    <div class="text-center">
-                        <p class="text-muted mb-2">Don't have an organization?</p>
-                        <a href="/onboarding" class="btn btn-outline-primary">
-                            <span class="bi bi-building-fill-add me-2"></span>
-                            Create Organization
-                        </a>
+                    <div style="border-top: 1px solid var(--gray-200); margin: 1.5rem 0; padding-top: 1.5rem;">
+                        <div class="text-center">
+                            <p class="text-muted" style="margin-bottom: 0.75rem;">Don't have an organization?</p>
+                            <a href="/onboarding" class="btn btn-outline-primary">
+                                Create Organization
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
 @code {
     private LoginModel loginModel = new();

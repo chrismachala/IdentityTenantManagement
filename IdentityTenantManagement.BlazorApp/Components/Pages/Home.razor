@@ -1,121 +1,118 @@
-﻿@page "/"
+@page "/"
 @using IdentityTenantManagement.BlazorApp.Services
 @inject AuthenticationService AuthService
 @implements IDisposable
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Home - Identity Tenant Management</PageTitle>
 
-<div class="container mt-5">
-    @if (AuthService.CurrentState.IsAuthenticated && AuthService.CurrentState.UserInfo != null)
-    {
-        <!-- Authenticated User View -->
-        <div class="row">
-            <div class="col-12 mb-4">
-                <div class="alert alert-success border-0 shadow-sm">
-                    <h4 class="alert-heading">
-                        <span class="bi bi-check-circle-fill me-2"></span>
-                        Welcome back, @AuthService.CurrentState.UserInfo.FirstName!
-                    </h4>
-                    <p class="mb-0">
-                        You are logged in to <strong>@AuthService.CurrentState.UserInfo.Organization</strong>
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm hover-card h-100">
-                    <div class="card-body text-center p-4">
-                        <span class="bi bi-people-fill text-primary" style="font-size: 3rem;"></span>
-                        <h5 class="card-title mt-3">Manage Users</h5>
-                        <p class="card-text text-muted">Add, edit, or remove users from your organization</p>
-                        <a href="/users" class="btn btn-outline-primary">Manage</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm hover-card h-100">
-                    <div class="card-body text-center p-4">
-                        <span class="bi bi-shield-lock-fill text-success" style="font-size: 3rem;"></span>
-                        <h5 class="card-title mt-3">Roles & Permissions</h5>
-                        <p class="card-text text-muted">Configure access control and permissions</p>
-                        <a href="/roles" class="btn btn-outline-success">Configure</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm hover-card h-100">
-                    <div class="card-body text-center p-4">
-                        <span class="bi bi-gear-fill text-info" style="font-size: 3rem;"></span>
-                        <h5 class="card-title mt-3">Settings</h5>
-                        <p class="card-text text-muted">Update organization settings and preferences</p>
-                        <a href="/settings" class="btn btn-outline-info">Settings</a>
+@if (AuthService.CurrentState.IsAuthenticated && AuthService.CurrentState.UserInfo != null)
+{
+    <!-- Authenticated User View -->
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <div style="margin-bottom: 2rem;">
+            <div class="alert alert-success">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <h4 style="margin: 0 0 0.25rem 0;">Welcome back, @AuthService.CurrentState.UserInfo.FirstName!</h4>
+                        <p style="margin: 0;">You are logged in to <strong>@AuthService.CurrentState.UserInfo.Organization</strong></p>
                     </div>
                 </div>
             </div>
         </div>
-    }
-    else
-    {
-        <!-- Non-authenticated User View -->
-        <div class="row">
-            <div class="col-12 text-center">
-                <h1 class="display-4 mb-4">Identity Tenant Management</h1>
-                <p class="lead mb-5">Manage your organization identities and access control</p>
-            </div>
-        </div>
 
-        <div class="row justify-content-center g-4">
-            <div class="col-md-6">
-                <div class="card shadow-sm hover-card h-100">
-                    <div class="card-body text-center p-5">
-                        <div class="mb-4">
-                            <span class="bi bi-box-arrow-in-right" style="font-size: 4rem; color: var(--bs-success);"></span>
-                        </div>
-                        <h3 class="card-title mb-3">Sign In</h3>
-                        <p class="card-text text-muted mb-4">
-                            Access your organization's identity management portal
-                        </p>
-                        <a href="/login" class="btn btn-success btn-lg">
-                            <span class="bi bi-box-arrow-in-right me-2"></span>
-                            Login
-                        </a>
-                    </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+            <div class="card hover-card" style="height: 100%;">
+                <div class="card-body text-center p-5">
+                    <svg width="64" height="64" fill="none" stroke="var(--primary)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <h5 class="mb-3">Manage Users</h5>
+                    <p class="text-muted mb-4">Add, edit, or remove users from your organization</p>
+                    <a href="/users" class="btn btn-outline-primary">Manage</a>
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <div class="card shadow-sm hover-card h-100">
-                    <div class="card-body text-center p-5">
-                        <div class="mb-4">
-                            <span class="bi bi-building-fill-add" style="font-size: 4rem; color: var(--bs-primary);"></span>
-                        </div>
-                        <h3 class="card-title mb-3">Create Organization</h3>
-                        <p class="card-text text-muted mb-4">
-                            Set up a new organization with a dedicated realm and admin account
-                        </p>
-                        <a href="/onboarding" class="btn btn-primary btn-lg">
-                            <span class="bi bi-building-fill-add me-2"></span>
-                            Get Started
-                        </a>
-                    </div>
+            <div class="card hover-card" style="height: 100%;">
+                <div class="card-body text-center p-5">
+                    <svg width="64" height="64" fill="none" stroke="var(--success)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    <h5 class="mb-3">Roles & Permissions</h5>
+                    <p class="text-muted mb-4">Configure access control and permissions</p>
+                    <a href="/roles" class="btn btn-outline-primary">Configure</a>
+                </div>
+            </div>
+
+            <div class="card hover-card" style="height: 100%;">
+                <div class="card-body text-center p-5">
+                    <svg width="64" height="64" fill="none" stroke="var(--secondary)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <h5 class="mb-3">Settings</h5>
+                    <p class="text-muted mb-4">Update organization settings and preferences</p>
+                    <a href="/settings" class="btn btn-outline-primary">Settings</a>
                 </div>
             </div>
         </div>
-    }
-</div>
+    </div>
+}
+else
+{
+    <!-- Non-authenticated User View -->
+    <div style="max-width: 900px; margin: 0 auto;">
+        <div class="text-center mb-5">
+            <h1 style="font-size: 3rem; margin-bottom: 1rem;">Identity Tenant Management</h1>
+            <p style="font-size: 1.25rem; color: var(--gray-600);">Manage your organization identities and access control</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem;">
+            <div class="card hover-card">
+                <div class="card-body text-center p-5">
+                    <svg width="80" height="80" fill="none" stroke="var(--success)" viewBox="0 0 24 24" style="margin-bottom: 1.5rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
+                    <h3 class="mb-3">Sign In</h3>
+                    <p class="text-muted mb-4">Access your organization's identity management portal</p>
+                    <a href="/login" class="btn btn-primary btn-lg" style="background-color: var(--success); border-color: var(--success);">
+                        Sign In
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-left: 0.5rem; display: inline;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <div class="card hover-card">
+                <div class="card-body text-center p-5">
+                    <svg width="80" height="80" fill="none" stroke="var(--primary)" viewBox="0 0 24 24" style="margin-bottom: 1.5rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <h3 class="mb-3">Create Organization</h3>
+                    <p class="text-muted mb-4">Set up a new organization with a dedicated realm and admin account</p>
+                    <a href="/onboarding" class="btn btn-primary btn-lg">
+                        Get Started
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-left: 0.5rem; display: inline;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .hover-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .hover-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     }
 </style>
 

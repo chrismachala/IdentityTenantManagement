@@ -2,72 +2,92 @@
 @inject AuthenticationService AuthService
 @implements IDisposable
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Identity Tenant Management</a>
-    </div>
+<!-- Brand Header -->
+<div class="nav-header">
+    <a href="/" class="nav-brand">
+        <div class="brand-icon">IT</div>
+        <span>Identity Tenant</span>
+    </a>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
+<!-- Navigation Menu -->
+<div class="nav-scrollable">
+    <nav class="nav">
+        <div class="nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Home
             </NavLink>
         </div>
 
         @if (AuthService.CurrentState.IsAuthenticated)
         {
-            <div class="nav-item px-3">
+            <div class="nav-item">
                 <NavLink class="nav-link" href="dashboard">
-                    <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Dashboard
                 </NavLink>
             </div>
         }
         else
         {
-            <div class="nav-item px-3">
+            <div class="nav-item">
                 <NavLink class="nav-link" href="onboarding">
-                    <span class="bi bi-building-fill-add" aria-hidden="true"></span> Onboarding
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    Create Organization
                 </NavLink>
             </div>
 
-            <div class="nav-item px-3">
+            <div class="nav-item">
                 <NavLink class="nav-link" href="login">
-                    <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> Login
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
+                    Sign In
                 </NavLink>
             </div>
         }
     </nav>
-
-    @if (AuthService.CurrentState.IsAuthenticated && AuthService.CurrentState.UserInfo != null)
-    {
-        <div class="nav-user-info px-3 mt-auto mb-3">
-            <hr class="mb-3" />
-            <div class="user-card p-3 bg-dark rounded">
-                <div class="d-flex align-items-center mb-2">
-                    <span class="bi bi-building-fill text-primary me-2" style="font-size: 1.2rem;"></span>
-                    <div class="flex-grow-1 text-truncate">
-                        <small class="text-muted d-block">Organization</small>
-                        <strong class="d-block text-truncate">@AuthService.CurrentState.UserInfo.Organization</strong>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center mb-3">
-                    <span class="bi bi-person-fill text-info me-2" style="font-size: 1.2rem;"></span>
-                    <div class="flex-grow-1 text-truncate">
-                        <small class="text-muted d-block">User</small>
-                        <strong class="d-block text-truncate">@AuthService.CurrentState.UserInfo.FirstName @AuthService.CurrentState.UserInfo.LastName</strong>
-                    </div>
-                </div>
-                <button class="btn btn-outline-light btn-sm w-100" @onclick="HandleLogout">
-                    <span class="bi bi-box-arrow-right me-1"></span> Logout
-                </button>
-            </div>
-        </div>
-    }
 </div>
+
+<!-- User Info (when authenticated) -->
+@if (AuthService.CurrentState.IsAuthenticated && AuthService.CurrentState.UserInfo != null)
+{
+    <div class="nav-user-info">
+        <div class="user-card">
+            <div class="user-section">
+                <div class="user-icon">
+                    @GetInitials(AuthService.CurrentState.UserInfo.FirstName, AuthService.CurrentState.UserInfo.LastName)
+                </div>
+                <div class="user-details">
+                    <div class="user-label">Signed in as</div>
+                    <div class="user-value">@AuthService.CurrentState.UserInfo.FirstName @AuthService.CurrentState.UserInfo.LastName</div>
+                </div>
+            </div>
+            <div class="user-section">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                <div class="user-details">
+                    <div class="user-label">Organization</div>
+                    <div class="user-value">@AuthService.CurrentState.UserInfo.Organization</div>
+                </div>
+            </div>
+            <button class="btn-logout" @onclick="HandleLogout">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+                Sign Out
+            </button>
+        </div>
+    </div>
+}
 
 @code {
     protected override void OnInitialized()
@@ -79,6 +99,13 @@
     {
         AuthService.Logout();
         StateHasChanged();
+    }
+
+    private string GetInitials(string firstName, string lastName)
+    {
+        var first = string.IsNullOrEmpty(firstName) ? "" : firstName.Substring(0, 1).ToUpper();
+        var last = string.IsNullOrEmpty(lastName) ? "" : lastName.Substring(0, 1).ToUpper();
+        return $"{first}{last}";
     }
 
     public void Dispose()
