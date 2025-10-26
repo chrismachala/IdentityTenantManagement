@@ -119,4 +119,11 @@ public class TenantUserRepository : ITenantUserRepository
         // Combine and return distinct permissions
         return rolePermissions.Union(userPermissions).Distinct().ToList();
     }
+
+    public async Task<int> CountUsersWithRoleInTenantAsync(Guid tenantId, Guid roleId)
+    {
+        return await _context.TenantUsers
+            .Where(tu => tu.TenantId == tenantId && tu.RoleId == roleId)
+            .CountAsync();
+    }
 }

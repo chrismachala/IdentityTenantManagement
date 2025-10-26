@@ -52,8 +52,10 @@ public class DevCleanupController : ControllerBase
 
         var dbRecords = new Dictionary<string, int>
         {
+            { "UserPermissions", 0 },
             { "TenantUsers", 0 },
             { "ExternalIdentities", 0 },
+            { "RegistrationFailureLogs", 0 },
             { "Users", 0 },
             { "TenantDomains", 0 },
             { "Tenants", 0 }
@@ -117,42 +119,67 @@ public class DevCleanupController : ControllerBase
             // ============================================
             _logger.LogInformation("Step 2: Deleting data from database...");
 
-            // Delete in order to respect foreign key constraints
+            // Use explicit transaction for database operations
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
 
-            // 1. Delete TenantUsers (junction table)
-            var tenantUsers = await _dbContext.TenantUsers.ToListAsync();
-            _dbContext.TenantUsers.RemoveRange(tenantUsers);
-            dbRecords["TenantUsers"] = tenantUsers.Count;
-            _logger.LogInformation("Marked {Count} TenantUsers for deletion", tenantUsers.Count);
+            try
+            {
+                // Delete in order to respect foreign key constraints
 
-            // 2. Delete ExternalIdentities
-            var externalIdentities = await _dbContext.ExternalIdentities.ToListAsync();
-            _dbContext.ExternalIdentities.RemoveRange(externalIdentities);
-            dbRecords["ExternalIdentities"] = externalIdentities.Count;
-            _logger.LogInformation("Marked {Count} ExternalIdentities for deletion", externalIdentities.Count);
+                // 1. Delete UserPermissions (depends on TenantUsers)
+                var userPermissions = await _dbContext.UserPermissions.ToListAsync();
+                _dbContext.UserPermissions.RemoveRange(userPermissions);
+                dbRecords["UserPermissions"] = userPermissions.Count;
+                _logger.LogInformation("Marked {Count} UserPermissions for deletion", userPermissions.Count);
 
-            // 3. Delete Users
-            var users = await _dbContext.Users.ToListAsync();
-            _dbContext.Users.RemoveRange(users);
-            dbRecords["Users"] = users.Count;
-            _logger.LogInformation("Marked {Count} Users for deletion", users.Count);
+                // 2. Delete TenantUsers (junction table, depends on Users and Tenants)
+                var tenantUsers = await _dbContext.TenantUsers.ToListAsync();
+                _dbContext.TenantUsers.RemoveRange(tenantUsers);
+                dbRecords["TenantUsers"] = tenantUsers.Count;
+                _logger.LogInformation("Marked {Count} TenantUsers for deletion", tenantUsers.Count);
 
-            // 4. Delete TenantDomains (if separate table - check your DbContext)
-            // Note: TenantDomain is referenced in OnModelCreating but not in DbSet
-            // If it exists, uncomment:
-            // var tenantDomains = await _dbContext.Set<TenantDomain>().ToListAsync();
-            // _dbContext.Set<TenantDomain>().RemoveRange(tenantDomains);
-            // dbRecords["TenantDomains"] = tenantDomains.Count;
+                // 3. Delete ExternalIdentities (depends on Users and Tenants)
+                var externalIdentities = await _dbContext.ExternalIdentities.ToListAsync();
+                _dbContext.ExternalIdentities.RemoveRange(externalIdentities);
+                dbRecords["ExternalIdentities"] = externalIdentities.Count;
+                _logger.LogInformation("Marked {Count} ExternalIdentities for deletion", externalIdentities.Count);
 
-            // 5. Delete Tenants
-            var tenants = await _dbContext.Tenants.ToListAsync();
-            _dbContext.Tenants.RemoveRange(tenants);
-            dbRecords["Tenants"] = tenants.Count;
-            _logger.LogInformation("Marked {Count} Tenants for deletion", tenants.Count);
+                // 4. Delete RegistrationFailureLogs (independent table)
+                var registrationFailureLogs = await _dbContext.RegistrationFailureLogs.ToListAsync();
+                _dbContext.RegistrationFailureLogs.RemoveRange(registrationFailureLogs);
+                dbRecords["RegistrationFailureLogs"] = registrationFailureLogs.Count;
+                _logger.LogInformation("Marked {Count} RegistrationFailureLogs for deletion", registrationFailureLogs.Count);
 
-            // Save all database changes
-            await _dbContext.SaveChangesAsync();
-            _logger.LogInformation("Database changes saved successfully");
+                // 5. Delete Users
+                var users = await _dbContext.Users.ToListAsync();
+                _dbContext.Users.RemoveRange(users);
+                dbRecords["Users"] = users.Count;
+                _logger.LogInformation("Marked {Count} Users for deletion", users.Count);
+
+                // 6. Delete TenantDomains (if separate table - check your DbContext)
+                // Note: TenantDomain is referenced in OnModelCreating but not in DbSet
+                // If it exists, uncomment:
+                // var tenantDomains = await _dbContext.Set<TenantDomain>().ToListAsync();
+                // _dbContext.Set<TenantDomain>().RemoveRange(tenantDomains);
+                // dbRecords["TenantDomains"] = tenantDomains.Count;
+
+                // 7. Delete Tenants
+                var tenants = await _dbContext.Tenants.ToListAsync();
+                _dbContext.Tenants.RemoveRange(tenants);
+                dbRecords["Tenants"] = tenants.Count;
+                _logger.LogInformation("Marked {Count} Tenants for deletion", tenants.Count);
+
+                // Save all database changes
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                _logger.LogInformation("Database changes committed successfully");
+            }
+            catch (Exception dbEx)
+            {
+                _logger.LogError(dbEx, "Error during database deletion, rolling back transaction");
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             _logger.LogWarning("=== DATA WIPE COMPLETED ===");
 
@@ -200,13 +227,22 @@ public class DevCleanupController : ControllerBase
 
         _logger.LogWarning("=== WIPING DATABASE ONLY ===");
 
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
         try
         {
+            // Delete in proper order to respect FK constraints
+            var userPermissions = await _dbContext.UserPermissions.ToListAsync();
+            _dbContext.UserPermissions.RemoveRange(userPermissions);
+
             var tenantUsers = await _dbContext.TenantUsers.ToListAsync();
             _dbContext.TenantUsers.RemoveRange(tenantUsers);
 
             var externalIdentities = await _dbContext.ExternalIdentities.ToListAsync();
             _dbContext.ExternalIdentities.RemoveRange(externalIdentities);
+
+            var registrationFailureLogs = await _dbContext.RegistrationFailureLogs.ToListAsync();
+            _dbContext.RegistrationFailureLogs.RemoveRange(registrationFailureLogs);
 
             var users = await _dbContext.Users.ToListAsync();
             _dbContext.Users.RemoveRange(users);
@@ -215,6 +251,9 @@ public class DevCleanupController : ControllerBase
             _dbContext.Tenants.RemoveRange(tenants);
 
             await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            _logger.LogInformation("Database wipe completed successfully");
 
             return Ok(new
             {
@@ -222,8 +261,10 @@ public class DevCleanupController : ControllerBase
                 message = "Database wiped successfully",
                 deletedRecords = new
                 {
+                    UserPermissions = userPermissions.Count,
                     TenantUsers = tenantUsers.Count,
                     ExternalIdentities = externalIdentities.Count,
+                    RegistrationFailureLogs = registrationFailureLogs.Count,
                     Users = users.Count,
                     Tenants = tenants.Count
                 }
@@ -231,7 +272,8 @@ public class DevCleanupController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error wiping database");
+            _logger.LogError(ex, "Error wiping database, rolling back transaction");
+            await transaction.RollbackAsync();
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -326,8 +368,10 @@ public class DevCleanupController : ControllerBase
             {
                 database = new
                 {
+                    UserPermissions = await _dbContext.UserPermissions.CountAsync(),
                     TenantUsers = await _dbContext.TenantUsers.CountAsync(),
                     ExternalIdentities = await _dbContext.ExternalIdentities.CountAsync(),
+                    RegistrationFailureLogs = await _dbContext.RegistrationFailureLogs.CountAsync(),
                     Users = await _dbContext.Users.CountAsync(),
                     Tenants = await _dbContext.Tenants.CountAsync()
                 },

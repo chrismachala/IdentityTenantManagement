@@ -11,11 +11,16 @@ namespace IdentityTenantManagement.Controllers;
 [Route("api/[controller]")]
 public class TenantsController : ControllerBase
 {
+    private readonly ITenantOrchestrationService _tenantOrchestrationService;
     private readonly IKCOrganisationService _kcOrganisationService;
     private readonly IUserService _userService;
 
-    public TenantsController(IKCOrganisationService kcOrganisationService, IUserService userService)
+    public TenantsController(
+        ITenantOrchestrationService tenantOrchestrationService,
+        IKCOrganisationService kcOrganisationService,
+        IUserService userService)
     {
+        _tenantOrchestrationService = tenantOrchestrationService;
         _kcOrganisationService = kcOrganisationService;
         _userService = userService;
     } 
@@ -23,8 +28,8 @@ public class TenantsController : ControllerBase
     [HttpPost("Create")]
     public async Task<IActionResult> CreateTenant([FromBody] CreateTenantModel body)
     {
-          await _kcOrganisationService.CreateOrgAsync(body);
-          return Ok(new {message="Organisation created successfully", tenantName=body.Name }); 
+          var tenantId = await _tenantOrchestrationService.CreateTenantAsync(body);
+          return Ok(new {message="Organisation created successfully", tenantName=body.Name, tenantId = tenantId });
     } 
     
     [HttpPost("GetTenantByDomain")]
@@ -52,9 +57,7 @@ public class TenantsController : ControllerBase
     [HttpPost("InviteUser")]
     public async Task<IActionResult> InviteUser([FromBody] InviteUserModel body)
     {
-        // Invite user in Keycloak
-        await _kcOrganisationService.InviteUserToOrganisationAsync(body);
-
-        return Ok(new {message="User invitation sent successfully" });
+        var userId = await _tenantOrchestrationService.InviteUserToTenantAsync(body);
+        return Ok(new {message="User invitation sent successfully", userId = userId });
     }
 }

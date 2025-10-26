@@ -1,3 +1,4 @@
+using IdentityTenantManagement.Authorization;
 using IdentityTenantManagement.Services;
 using KeycloakAdapter.Models;
 using KeycloakAdapter.Services;
@@ -10,17 +11,20 @@ namespace IdentityTenantManagement.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
+    private readonly IUserOrchestrationService _userOrchestrationService;
     private readonly IKCUserService _kcUserService;
     private readonly IKCOrganisationService _kcOrganisationService;
     private readonly IUserService _userService;
     private readonly IKCEventsService _kcEventsService;
 
     public UsersController(
+        IUserOrchestrationService userOrchestrationService,
         IKCUserService kcUserService,
         IKCOrganisationService kcOrganisationService,
         IUserService userService,
         IKCEventsService kcEventsService)
     {
+        _userOrchestrationService = userOrchestrationService;
         _kcUserService = kcUserService;
         _kcOrganisationService = kcOrganisationService;
         _userService = userService;
@@ -35,10 +39,10 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("Create")]
-    public async Task<IActionResult> CreateUser([FromBody] CreateUserModel body)
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserModel body, [FromQuery] string? organizationId = null)
     {
-        await _kcUserService.CreateUserAsync(body);
-        return Ok(new {message="User created successfully", emailAddress=body.Email });
+        var userId = await _userOrchestrationService.CreateUserAsync(body, organizationId);
+        return Ok(new {message="User created successfully", emailAddress=body.Email, userId = userId });
     }
 
     [HttpPost("GetUserByEmail")]
@@ -56,10 +60,34 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("{userId}")]
+    [RequirePermission("delete-users")]
     public async Task<IActionResult> DeleteUser(string userId)
     {
-        await _kcUserService.DeleteUserAsync(userId);
-        return Ok(new {message="User deleted successfully"});
+        try
+        {
+            var callingUserId = User.FindFirst("user_id")?.Value;
+            var tenantId = User.FindFirst("tenant_id")?.Value;
+
+            if (string.IsNullOrEmpty(callingUserId) || string.IsNullOrEmpty(tenantId))
+            {
+                return Unauthorized(new { message = "User identity or tenant context not found" });
+            }
+
+            await _userOrchestrationService.DeleteUserAsync(userId, callingUserId, tenantId);
+            return Ok(new { message = "User deleted successfully" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to delete user", error = ex.Message });
+        }
     }
 
     [HttpGet("events/recent-registrations")]

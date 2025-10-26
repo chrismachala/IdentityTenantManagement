@@ -9,6 +9,7 @@ namespace KeycloakAdapter.Services;
 public interface IKCUserService
 {
     Task CreateUserAsync(CreateUserModel model);
+    Task<UserRepresentation> GetUserByIdAsync(string userId);
     Task<UserRepresentation> GetUserByEmailAsync(string email);
     Task UpdateUserAsync(string userId, CreateUserModel model);
     Task DeleteUserAsync(string userId);
@@ -23,6 +24,22 @@ public class KCUserService : KeycloakServiceBase, IKCUserService
         ILogger<KCUserService> logger)
         : base(config, requestHelper, logger)
     {
+    }
+
+    public async Task<UserRepresentation> GetUserByIdAsync(string userId)
+    {
+        Logger.LogInformation("Getting user by ID: {UserId}", userId);
+
+        var endpoint = BuildEndpoint($"users/{userId}");
+        var user = await GetAsync<UserRepresentation>(endpoint);
+
+        if (user == null)
+        {
+            throw new KeyNotFoundException($"User with ID {userId} not found in Keycloak");
+        }
+
+        Logger.LogInformation("Successfully retrieved user: {UserId}", userId);
+        return user;
     }
 
     public async Task<UserRepresentation> GetUserByEmailAsync(string emailAddress)

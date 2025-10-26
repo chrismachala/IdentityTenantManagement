@@ -4,18 +4,16 @@ namespace IdentityTenantManagement.Services;
 
 public class PermissionService
 {
-    private readonly ITenantUserRepository _tenantUserRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public PermissionService(ITenantUserRepository tenantUserRepository, IUnitOfWork unitOfWork)
+    public PermissionService(IUnitOfWork unitOfWork)
     {
-        _tenantUserRepository = tenantUserRepository;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<List<string>> GetUserPermissionsAsync(Guid tenantId, Guid userId)
     {
-        return await _tenantUserRepository.GetUserPermissionsAsync(tenantId, userId);
+        return await _unitOfWork.TenantUsers.GetUserPermissionsAsync(tenantId, userId);
     }
 
     public async Task<bool> UserHasPermissionAsync(Guid tenantId, Guid userId, string permissionName)
