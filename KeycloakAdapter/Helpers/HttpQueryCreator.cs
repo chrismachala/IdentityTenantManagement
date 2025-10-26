@@ -62,6 +62,29 @@ namespace KeycloakAdapter.Helpers
             });
         }
 
+        public static string BuildQueryForEvents(
+            string? client = null,
+            string? dateFrom = null,
+            string? dateTo = null,
+            int? first = null,
+            string? ipAddress = null,
+            int? max = null,
+            string? type = null,
+            string? user = null)
+        {
+            return BuildQuery(new
+            {
+                client,
+                dateFrom,
+                dateTo,
+                first,
+                ipAddress,
+                max,
+                type,
+                user
+            });
+        }
+
         private static string BuildQuery(object parameters)
         {
             var dict = parameters

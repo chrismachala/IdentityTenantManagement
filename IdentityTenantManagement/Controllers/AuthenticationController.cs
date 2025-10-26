@@ -1,3 +1,4 @@
+using IdentityTenantManagement.Services;
 using KeycloakAdapter.Models;
 using KeycloakAdapter.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -10,13 +11,16 @@ namespace IdentityTenantManagement.Controllers;
 public class AuthenticationController : ControllerBase
 {
     private readonly IKCAuthenticationService _authenticationService;
+    private readonly PermissionService _permissionService;
     private readonly ILogger<AuthenticationController> _logger;
 
     public AuthenticationController(
         IKCAuthenticationService authenticationService,
+        PermissionService permissionService,
         ILogger<AuthenticationController> logger)
     {
         _authenticationService = authenticationService;
+        _permissionService = permissionService;
         _logger = logger;
     }
 
@@ -40,5 +44,12 @@ public class AuthenticationController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    [HttpGet("permissions/{keycloakUserId}/{keycloakOrgId}")]
+    public async Task<ActionResult<List<string>>> GetUserPermissions(string keycloakUserId, string keycloakOrgId)
+    {
+        var permissions = await _permissionService.GetUserPermissionsByExternalIdsAsync(keycloakUserId, keycloakOrgId);
+        return Ok(permissions);
     }
 }

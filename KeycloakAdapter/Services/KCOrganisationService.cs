@@ -1,3 +1,4 @@
+using KeycloakAdapter.Exceptions;
 using KeycloakAdapter.Helpers;
 using KeycloakAdapter.Models;
 using IO.Swagger.Model;
@@ -11,10 +12,11 @@ public interface IKCOrganisationService
     Task CreateOrgAsync(CreateTenantModel model);
     Task<OrganizationRepresentation> GetOrganisationByDomain(string domain);
     Task AddUserToOrganisationAsync(UserTenantModel model);
-    Task InviteUserToOrganisationAsync(InviteUserModel model);
+    Task<string> InviteUserToOrganisationAsync(InviteUserModel model);
     Task DeleteOrganisationAsync(string orgId);
     Task RemoveUserFromOrganisationAsync(string userId, string orgId);
     Task<List<OrganizationRepresentation>> GetAllOrganisationsAsync();
+    Task<List<UserRepresentation>> GetOrganisationUsersAsync(string orgId);
 }
 
 public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
@@ -70,7 +72,7 @@ public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
         Logger.LogInformation("Successfully added user {UserId} to organisation {OrgId}", userTenantModel.UserId, userTenantModel.TenantId);
     }
 
-    public async Task InviteUserToOrganisationAsync(InviteUserModel model)
+    public async Task<string> InviteUserToOrganisationAsync(InviteUserModel model)
     {
         Logger.LogInformation("Inviting user {Email} to organisation {OrgId}", model.Email, model.TenantId);
 
@@ -87,9 +89,21 @@ public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
         if (!string.IsNullOrEmpty(model.LastName))
             inviteData.Add("lastName", model.LastName);
 
-        await PostFormAsync(endpoint, inviteData);
+        var response = await PostFormAsync(endpoint, inviteData);
 
-        Logger.LogInformation("Successfully invited user {Email} to organisation {OrgId}", model.Email, model.TenantId);
+        // Extract user ID from Location header
+        // Keycloak returns the user ID in the Location header: .../users/{userId}
+        var locationHeader = response.Headers.Location?.ToString();
+        if (string.IsNullOrEmpty(locationHeader))
+        {
+            throw new KeycloakException("Failed to get user ID from invite response - Location header not found", response.StatusCode, "");
+        }
+
+        var userId = locationHeader.Split('/').Last();
+
+        Logger.LogInformation("Successfully invited user {Email} to organisation {OrgId}, user ID: {UserId}", model.Email, model.TenantId, userId);
+
+        return userId;
     }
 
     public async Task DeleteOrganisationAsync(string orgId)
@@ -121,5 +135,16 @@ public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
 
         Logger.LogInformation("Found {Count} organisations", orgs?.Count ?? 0);
         return orgs ?? new List<OrganizationRepresentation>();
+    }
+
+    public async Task<List<UserRepresentation>> GetOrganisationUsersAsync(string orgId)
+    {
+        Logger.LogInformation("Getting users for organisation {OrgId}", orgId);
+
+        var endpoint = BuildEndpoint($"organizations/{orgId}/members");
+        var users = await GetAsync<List<UserRepresentation>>(endpoint);
+
+        Logger.LogInformation("Found {Count} users in organisation {OrgId}", users?.Count ?? 0, orgId);
+        return users ?? new List<UserRepresentation>();
     }
 }

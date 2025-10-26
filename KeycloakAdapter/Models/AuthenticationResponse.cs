@@ -18,4 +18,7 @@ public class UserInfo
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Organization { get; set; } = string.Empty;
+    
+    public string OrganizationId { get; set; } = string.Empty;
+    
 }

@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<PermissionService>();
+        services.AddScoped<IUserService, UserService>();
 
         return services;
     }

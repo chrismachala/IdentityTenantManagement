@@ -17,6 +17,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IKCOrganisationService, KCOrganisationService>();
         services.AddScoped<IKCUserService, KCUserService>();
         services.AddScoped<IKCAuthenticationService, KCAuthenticationService>();
+        services.AddScoped<IKCEventsService, KCEventsService>();
 
         return services;
     }

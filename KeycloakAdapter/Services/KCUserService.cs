@@ -10,6 +10,7 @@ public interface IKCUserService
 {
     Task CreateUserAsync(CreateUserModel model);
     Task<UserRepresentation> GetUserByEmailAsync(string email);
+    Task UpdateUserAsync(string userId, CreateUserModel model);
     Task DeleteUserAsync(string userId);
     Task<List<UserRepresentation>> GetAllUsersAsync();
 }
@@ -64,6 +65,24 @@ public class KCUserService : KeycloakServiceBase, IKCUserService
 
         await PostJsonAsync(endpoint, user);
         Logger.LogInformation("Successfully created user: {Email}", userModel.Email);
+    }
+
+    public async Task UpdateUserAsync(string userId, CreateUserModel userModel)
+    {
+        Logger.LogInformation("Updating user: {UserId}", userId);
+
+        var endpoint = BuildEndpoint($"users/{userId}");
+
+        var user = new UserRepresentation
+        {
+            FirstName = userModel.FirstName,
+            LastName = userModel.LastName,
+            Email = userModel.Email,
+            EmailVerified = true
+        };
+
+        await PutJsonAsync(endpoint, user);
+        Logger.LogInformation("Successfully updated user: {UserId}", userId);
     }
 
     public async Task DeleteUserAsync(string userId)

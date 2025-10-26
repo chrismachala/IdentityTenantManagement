@@ -119,11 +119,16 @@ else
 @code {
     protected override void OnInitialized()
     {
-        AuthService.OnAuthenticationStateChanged += StateHasChanged;
+        AuthService.OnAuthenticationStateChanged += OnAuthStateChanged;
+    }
+
+    private void OnAuthStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        AuthService.OnAuthenticationStateChanged -= StateHasChanged;
+        AuthService.OnAuthenticationStateChanged -= OnAuthStateChanged;
     }
 }

@@ -1,0 +1,551 @@
+@page "/users" 
+@using IdentityTenantManagement.BlazorApp.Services
+@using IO.Swagger.Model
+@inject HttpClient Http
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Manage Users</PageTitle>
+
+<div style="max-width: 1400px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2 style="margin: 0 0 0.5rem 0;">Manage Users</h2>
+            <p style="margin: 0; color: var(--gray-600);">View, edit, and manage users in your organization</p>
+        </div>
+        <div>
+ 
+            @if (hasInvitePermission)
+            {
+                <button type="button" class="btn btn-primary" @onclick="ShowInviteModal" @onclick:stopPropagation="true">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 0.5rem; display: inline;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Invite User
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-secondary" disabled>
+                    No Permission - Button would be here
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center" style="padding: 3rem;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p style="margin-top: 1rem; color: var(--gray-600);">Loading users...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @errorMessage
+        </div>
+    }
+    else if (users == null || !users.Any())
+    {
+        <div class="card">
+            <div class="card-body text-center" style="padding: 3rem;">
+                <svg width="64" height="64" fill="none" stroke="var(--gray-400)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+                <h5>No users found</h5>
+                <p class="text-muted">There are no users in this organization yet.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Username</th>
+                            <th>Status</th>
+                            @if (hasUpdatePermission || hasDeletePermission)
+                            {
+                                <th style="width: 150px;">Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in users)
+                        {
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--success)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            @GetInitials(user.FirstName, user.LastName)
+                                        </div>
+                                        <span>@user.FirstName @user.LastName</span>
+                                    </div>
+                                </td>
+                                <td>@user.Email</td>
+                                <td>@user.Username</td>
+                                <td>
+                                    @if (user.Enabled == true)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                @if (hasUpdatePermission || hasDeletePermission)
+                                {
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            @if (hasUpdatePermission)
+                                            {
+                                                <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowEditModal(user)">
+                                                    Edit
+                                                </button>
+                                            }
+                                            @if (hasDeletePermission)
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ShowDeleteModal(user)">
+                                                    Delete
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Edit User Modal -->
+@if (showEditModal && selectedUser != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User</h5>
+                    <button type="button" class="btn-close" @onclick="CloseEditModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">First Name</label>
+                        <input type="text" class="form-control" @bind="editFirstName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" class="form-control" @bind="editLastName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" @bind="editEmail" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(modalErrorMessage))
+                    {
+                        <div class="alert alert-danger">@modalErrorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="UpdateUser" disabled="@isUpdating">
+                        @if (isUpdating)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>Updating...</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete User Modal -->
+@if (showDeleteModal && selectedUser != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete User</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDeleteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong>@selectedUser.FirstName @selectedUser.LastName</strong>?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                    @if (!string.IsNullOrEmpty(modalErrorMessage))
+                    {
+                        <div class="alert alert-danger">@modalErrorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteUser" disabled="@isDeleting">
+                        @if (isDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>Deleting...</span>
+                        }
+                        else
+                        {
+                            <span>Delete</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Invite User Modal -->
+@if (showInviteModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Invite User</h5>
+                    <button type="button" class="btn-close" @onclick="CloseInviteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" @bind="inviteEmail" placeholder="user@example.com" required />
+                        <div class="form-text small">The user will receive an invitation email to complete their registration.</div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(modalErrorMessage))
+                    {
+                        <div class="alert alert-danger">@modalErrorMessage</div>
+                    }
+                    @if (!string.IsNullOrEmpty(inviteSuccessMessage))
+                    {
+                        <div class="alert alert-success">@inviteSuccessMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseInviteModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="InviteUser" disabled="@isInviting">
+                        @if (isInviting)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span>Sending Invitation...</span>
+                        }
+                        else
+                        {
+                            <span>Send Invitation</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<UserRepresentation>? users;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    // Permissions
+    private bool hasInvitePermission = false;
+    private bool hasViewPermission = false;
+    private bool hasUpdatePermission = false;
+    private bool hasDeletePermission = false;
+
+    // Edit modal
+    private bool showEditModal = false;
+    private UserRepresentation? selectedUser;
+    private string editFirstName = "";
+    private string editLastName = "";
+    private string editEmail = "";
+    private bool isUpdating = false;
+
+    // Delete modal
+    private bool showDeleteModal = false;
+    private bool isDeleting = false;
+
+    // Invite modal
+    private bool showInviteModal = false;
+    private string inviteEmail = "";
+    private bool isInviting = false;
+    private string? inviteSuccessMessage;
+
+    private string? modalErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.OnAuthenticationStateChanged += OnAuthStateChanged;
+        CheckPermissions();
+        await LoadUsers();
+    }
+
+    private async void OnAuthStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            CheckPermissions();
+            StateHasChanged();
+        });
+    }
+
+    private void CheckPermissions()
+    {
+        var permissions = AuthService.CurrentState.UserInfo?.Permissions ?? new List<string>();
+        hasInvitePermission = permissions.Contains("invite-users");
+        hasViewPermission = permissions.Contains("view-users");
+        hasUpdatePermission = permissions.Contains("update-users");
+        hasDeletePermission = permissions.Contains("delete-users");
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            if (!AuthService.CurrentState.IsAuthenticated || AuthService.CurrentState.UserInfo == null)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            // Check if user has permission to view users
+            if (!hasViewPermission)
+            {
+                errorMessage = "You don't have permission to view users";
+                return;
+            }
+
+            // Get organization ID from authenticated user info
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                errorMessage = "Organization ID not found";
+                return;
+            }
+
+            var response = await Http.GetAsync($"api/Users/organization/{organizationId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                users = await response.Content.ReadFromJsonAsync<List<UserRepresentation>>();
+            }
+            else
+            {
+                errorMessage = $"Failed to load users: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading users: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetInitials(string? firstName, string? lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        return first + last;
+    }
+
+    private void ShowEditModal(UserRepresentation user)
+    {
+        selectedUser = user;
+        editFirstName = user.FirstName ?? "";
+        editLastName = user.LastName ?? "";
+        editEmail = user.Email ?? "";
+        modalErrorMessage = null;
+        showEditModal = true;
+    }
+
+    private void CloseEditModal()
+    {
+        showEditModal = false;
+        selectedUser = null;
+        modalErrorMessage = null;
+    }
+
+    private async Task UpdateUser()
+    {
+        if (selectedUser == null) return;
+
+        try
+        {
+            isUpdating = true;
+            modalErrorMessage = null;
+
+            var updateModel = new
+            {
+                FirstName = editFirstName,
+                LastName = editLastName,
+                Email = editEmail
+            };
+
+            var response = await Http.PutAsJsonAsync($"api/Users/{selectedUser.Id}", updateModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                CloseEditModal();
+                await LoadUsers();
+            }
+            else
+            {
+                modalErrorMessage = $"Failed to update user: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessage = $"Error updating user: {ex.Message}";
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private void ShowDeleteModal(UserRepresentation user)
+    {
+        selectedUser = user;
+        modalErrorMessage = null;
+        showDeleteModal = true;
+    }
+
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
+        selectedUser = null;
+        modalErrorMessage = null;
+    }
+
+    private async Task DeleteUser()
+    {
+        if (selectedUser == null) return;
+
+        try
+        {
+            isDeleting = true;
+            modalErrorMessage = null;
+
+            var response = await Http.DeleteAsync($"api/Users/{selectedUser.Id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                CloseDeleteModal();
+                await LoadUsers();
+            }
+            else
+            {
+                modalErrorMessage = $"Failed to delete user: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessage = $"Error deleting user: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private void ShowInviteModal()
+    {
+        inviteEmail = "";
+        modalErrorMessage = null;
+        inviteSuccessMessage = null;
+        showInviteModal = true;
+    }
+
+    private void CloseInviteModal()
+    {
+        showInviteModal = false;
+        inviteEmail = "";
+        modalErrorMessage = null;
+        inviteSuccessMessage = null;
+    }
+
+    private async Task InviteUser()
+    {
+        try
+        {
+            isInviting = true;
+            modalErrorMessage = null;
+            inviteSuccessMessage = null;
+
+            // Validate email
+            if (string.IsNullOrWhiteSpace(inviteEmail))
+            {
+                modalErrorMessage = "Email is required";
+                return;
+            }
+
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                modalErrorMessage = "Organization ID not found";
+                return;
+            }
+
+            var inviteModel = new
+            {
+                TenantId = organizationId,
+                Email = inviteEmail
+            };
+
+            var response = await Http.PostAsJsonAsync("api/Tenants/InviteUser", inviteModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                inviteSuccessMessage = "User invitation sent successfully!";
+                // Wait a bit to show the success message
+                await Task.Delay(1500);
+                CloseInviteModal();
+                await LoadUsers();
+            }
+            else
+            {
+                modalErrorMessage = $"Failed to invite user: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessage = $"Error inviting user: {ex.Message}";
+        }
+        finally
+        {
+            isInviting = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthenticationStateChanged -= OnAuthStateChanged;
+    }
+}

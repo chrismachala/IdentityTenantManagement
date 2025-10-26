@@ -135,6 +135,15 @@ public class KCAuthenticationService : IKCAuthenticationService
 
             var userId = userInfoJson["sub"]?.ToString() ?? string.Empty;
 
+            // Get organization details
+            var org = await GetOrganizationByNameAsync(organization);
+
+            if (org == null)
+            {
+                _logger.LogWarning("Organization {Organization} not found", organization);
+                return null;
+            }
+
             // Verify user belongs to the specified organization
             var isMember = await VerifyOrganizationMembershipAsync(userId, organization);
 
@@ -151,7 +160,8 @@ public class KCAuthenticationService : IKCAuthenticationService
                 Email = userInfoJson["email"]?.ToString() ?? string.Empty,
                 FirstName = userInfoJson["given_name"]?.ToString() ?? string.Empty,
                 LastName = userInfoJson["family_name"]?.ToString() ?? string.Empty,
-                Organization = organization
+                Organization = organization,
+                OrganizationId = org.Id
             };
         }
         catch (Exception ex)

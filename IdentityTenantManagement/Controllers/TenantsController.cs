@@ -1,4 +1,5 @@
 using IdentityTenantManagement.Models.Organisations;
+using IdentityTenantManagement.Services;
 using Microsoft.AspNetCore.Mvc;
 using KeycloakAdapter.Models;
 using KeycloakAdapter.Services;
@@ -11,10 +12,12 @@ namespace IdentityTenantManagement.Controllers;
 public class TenantsController : ControllerBase
 {
     private readonly IKCOrganisationService _kcOrganisationService;
+    private readonly IUserService _userService;
 
-    public TenantsController(IKCOrganisationService kcOrganisationService)
+    public TenantsController(IKCOrganisationService kcOrganisationService, IUserService userService)
     {
         _kcOrganisationService = kcOrganisationService;
+        _userService = userService;
     } 
     
     [HttpPost("Create")]
@@ -49,7 +52,9 @@ public class TenantsController : ControllerBase
     [HttpPost("InviteUser")]
     public async Task<IActionResult> InviteUser([FromBody] InviteUserModel body)
     {
+        // Invite user in Keycloak
         await _kcOrganisationService.InviteUserToOrganisationAsync(body);
+
         return Ok(new {message="User invitation sent successfully" });
     }
 }

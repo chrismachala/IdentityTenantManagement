@@ -10,6 +10,12 @@ builder.Services.AddRazorComponents()
 // Configure HttpClient for API calls
 var apiBaseUrl = builder.Configuration.GetValue<string>("ApiSettings:BaseUrl") ?? "https://localhost:5280";
 
+// Register default HttpClient with BaseAddress for general use
+builder.Services.AddHttpClient(string.Empty, client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
 builder.Services.AddHttpClient<OnboardingApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);

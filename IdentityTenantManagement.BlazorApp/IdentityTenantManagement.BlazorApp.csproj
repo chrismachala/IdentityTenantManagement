@@ -4,6 +4,12 @@
     <ProjectReference Include="..\KeycloakAdapter\KeycloakAdapter.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="KeycloakModels">
+      <HintPath>..\..\KeycloakModels\bin\Release\net9.0\KeycloakModels.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>

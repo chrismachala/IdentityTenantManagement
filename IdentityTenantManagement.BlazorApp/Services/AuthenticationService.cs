@@ -38,6 +38,30 @@ public class AuthenticationService : IDisposable
 
             if (authResponse?.Success == true && authResponse.UserInfo != null)
             {
+                // Fetch user permissions separately from database
+                var permissions = new List<string>();
+                if (!string.IsNullOrEmpty(authResponse.UserInfo.UserId) && !string.IsNullOrEmpty(authResponse.UserInfo.OrganizationId))
+                {
+                    try
+                    {
+                        var permissionsResponse = await _httpClient.GetAsync(
+                            $"api/Authentication/permissions/{authResponse.UserInfo.UserId}/{authResponse.UserInfo.OrganizationId}"
+                        );
+
+                        if (permissionsResponse.IsSuccessStatusCode)
+                        {
+                            permissions = await permissionsResponse.Content.ReadFromJsonAsync<List<string>>() ?? new List<string>();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error fetching permissions: {ex.Message}");
+                        // Continue with empty permissions rather than failing login
+                    }
+                }
+
+                authResponse.UserInfo.Permissions = permissions;
+
                 _currentState = new AuthenticationState
                 {
                     IsAuthenticated = true,
@@ -145,4 +169,6 @@ public class UserInfo
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Organization { get; set; } = string.Empty;
+    public string OrganizationId { get; set; } = string.Empty;
+    public List<string> Permissions { get; set; } = new List<string>();
 }
