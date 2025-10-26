@@ -1,4 +1,5 @@
 using KeycloakAdapter.Services;
+using IdentityTenantManagementDatabase.Repositories;
 
 namespace IdentityTenantManagement.Services;
 
@@ -51,6 +52,8 @@ public class RegistrationProcessorService : BackgroundService
 
         var eventsService = scope.ServiceProvider.GetRequiredService<IKCEventsService>();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var kcUserService = scope.ServiceProvider.GetRequiredService<IKCUserService>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         try
         {
@@ -113,7 +116,53 @@ public class RegistrationProcessorService : BackgroundService
                 catch (Exception ex)
                 {
                     failureCount++;
-                    _logger.LogError(ex, "Failed to process registration for {Email}", registration.Email);
+                    _logger.LogError(ex, "Failed to process registration for {Email}. Attempting Keycloak rollback.", registration.Email);
+
+                    // Attempt to rollback Keycloak user
+                    var keycloakRolledBack = false;
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(registration.UserId))
+                        {
+                            await kcUserService.DeleteUserAsync(registration.UserId);
+                            keycloakRolledBack = true;
+                            _logger.LogInformation("Successfully rolled back Keycloak user {UserId} for {Email}", 
+                                registration.UserId, registration.Email);
+                        }
+
+                    }
+                    catch (Exception rollbackEx)
+                    {
+                        _logger.LogError(rollbackEx, "Failed to rollback Keycloak user {UserId} for {Email}",
+                            registration.UserId, registration.Email);
+                    }
+
+                    // Log failure to database
+                    try
+                    {
+                        var failureLog = new IdentityTenantManagementDatabase.Models.RegistrationFailureLog
+                        {
+                            Id = Guid.NewGuid(),
+                            KeycloakUserId = registration.UserId ?? string.Empty,
+                            KeycloakTenantId = registration.OrganizationId ?? string.Empty,
+                            Email = registration.Email ?? string.Empty,
+                            FirstName = registration.FirstName ?? string.Empty,
+                            LastName = registration.LastName ?? string.Empty,
+                            ErrorMessage = ex.Message,
+                            ErrorDetails = ex.ToString(),
+                            KeycloakUserRolledBack = keycloakRolledBack,
+                            FailedAt = DateTime.UtcNow
+                        };
+
+                        await unitOfWork.RegistrationFailureLogs.AddAsync(failureLog);
+                        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+                        _logger.LogInformation("Logged registration failure for {Email} to database", registration.Email);
+                    }
+                    catch (Exception logEx)
+                    {
+                        _logger.LogError(logEx, "Failed to log registration failure for {Email} to database", registration.Email);
+                    }
                 }
             }
 

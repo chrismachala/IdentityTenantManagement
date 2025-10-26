@@ -11,6 +11,7 @@ public interface IUnitOfWork : IDisposable
     ITenantUserRepository TenantUsers { get; }
     IRoleRepository Roles { get; }
     IPermissionRepository Permissions { get; }
+    IRegistrationFailureLogRepository RegistrationFailureLogs { get; }
 
     /// <summary>
     /// Saves all changes made in this unit of work to the database.

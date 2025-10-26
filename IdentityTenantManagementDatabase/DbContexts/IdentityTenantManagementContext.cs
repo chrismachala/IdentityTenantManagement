@@ -22,6 +22,7 @@ public class IdentityTenantManagementContext : DbContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     public DbSet<GlobalSettings> GlobalSettings => Set<GlobalSettings>();
+    public DbSet<RegistrationFailureLog> RegistrationFailureLogs => Set<RegistrationFailureLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
