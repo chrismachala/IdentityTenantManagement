@@ -14,6 +14,7 @@ public class UnitOfWork : IUnitOfWork
     private ITenantUserRepository? _tenantUserRepository;
     private IRoleRepository? _roleRepository;
     private IPermissionRepository? _permissionRepository;
+    private IUserStatusTypeRepository? _userStatusTypeRepository;
     private IRegistrationFailureLogRepository? _registrationFailureLogRepository;
 
     public UnitOfWork(IdentityTenantManagementContext context)
@@ -34,6 +35,8 @@ public class UnitOfWork : IUnitOfWork
     public IRoleRepository Roles => _roleRepository ??= new RoleRepository(_context);
 
     public IPermissionRepository Permissions => _permissionRepository ??= new PermissionRepository(_context);
+
+    public IUserStatusTypeRepository UserStatusTypes => _userStatusTypeRepository ??= new UserStatusTypeRepository(_context);
 
     public IRegistrationFailureLogRepository RegistrationFailureLogs => _registrationFailureLogRepository ??= new RegistrationFailureLogRepository(_context);
 

@@ -143,7 +143,7 @@ public class UserOrchestrationService : IUserOrchestrationService
 
             // Security Check 3: Prevent deletion of the last admin
             var orgAdminRole = await _roleService.GetRoleByNameAsync("org-admin");
-            if (orgAdminRole != null && tenantUser.RoleId == orgAdminRole.Id)
+            if (orgAdminRole != null && tenantUser.TenantUserRoles.Any(tur => tur.RoleId == orgAdminRole.Id))
             {
                 var adminCount = await _unitOfWork.TenantUsers.CountUsersWithRoleInTenantAsync(internalTenantId, orgAdminRole.Id);
                 if (adminCount <= 1)
@@ -340,13 +340,21 @@ public class UserOrchestrationService : IUserOrchestrationService
         // Generate internal GUID for user
         var userId = Guid.NewGuid();
 
+        // Get the active status
+        var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
+        if (activeStatus == null)
+        {
+            throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
+        }
+
         // Create user with internal GUID
         var user = new User
         {
             Id = userId,
             Email = userRepresentation.Email ?? string.Empty,
             FirstName = userRepresentation.FirstName ?? string.Empty,
-            LastName = userRepresentation.LastName ?? string.Empty
+            LastName = userRepresentation.LastName ?? string.Empty,
+            StatusId = activeStatus.Id
         };
         await _unitOfWork.Users.AddAsync(user);
 
@@ -380,7 +388,13 @@ public class UserOrchestrationService : IUserOrchestrationService
             {
                 TenantId = tenantExternalIdentity.EntityId,
                 UserId = userId,
-                RoleId = orgUserRole.Id
+                TenantUserRoles = new List<TenantUserRole>
+                {
+                    new TenantUserRole
+                    {
+                        RoleId = orgUserRole.Id
+                    }
+                }
             };
             await _unitOfWork.TenantUsers.AddAsync(tenantUser);
         }

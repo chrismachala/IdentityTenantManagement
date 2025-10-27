@@ -21,6 +21,8 @@ public class IdentityTenantManagementContext : DbContext
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+    public DbSet<TenantUserRole> TenantUserRoles => Set<TenantUserRole>();
+    public DbSet<UserStatusType> UserStatusTypes => Set<UserStatusType>();
     public DbSet<GlobalSettings> GlobalSettings => Set<GlobalSettings>();
     public DbSet<RegistrationFailureLog> RegistrationFailureLogs => Set<RegistrationFailureLog>();
 
@@ -92,12 +94,23 @@ public class IdentityTenantManagementContext : DbContext
             .HasForeignKey(ou => ou.UserId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        // Configure Role relationships
-        modelBuilder.Entity<TenantUser>()
-            .HasOne(tu => tu.Role)
-            .WithMany(r => r.TenantUsers)
-            .HasForeignKey(tu => tu.RoleId)
+        // Configure TenantUserRole relationships (many-to-many between TenantUser and Role)
+        modelBuilder.Entity<TenantUserRole>()
+            .HasOne(tur => tur.TenantUser)
+            .WithMany(tu => tu.TenantUserRoles)
+            .HasForeignKey(tur => tur.TenantUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TenantUserRole>()
+            .HasOne(tur => tur.Role)
+            .WithMany(r => r.TenantUserRoles)
+            .HasForeignKey(tur => tur.RoleId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Unique constraint for TenantUserRole (prevent duplicate role assignments)
+        modelBuilder.Entity<TenantUserRole>()
+            .HasIndex(tur => new { tur.TenantUserId, tur.RoleId })
+            .IsUnique();
 
         // Configure Permission-PermissionGroup relationship
         modelBuilder.Entity<Permission>()
@@ -148,10 +161,58 @@ public class IdentityTenantManagementContext : DbContext
             .HasIndex(up => new { up.TenantUserId, up.PermissionId })
             .IsUnique();
 
+        // Configure User-UserStatusType relationship
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.Status)
+            .WithMany(ust => ust.Users)
+            .HasForeignKey(u => u.StatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Unique constraint for GlobalSettings.Key
         modelBuilder.Entity<GlobalSettings>()
             .HasIndex(gs => gs.Key)
             .IsUnique();
+
+        // Seed UserStatusTypes
+        var activeStatusId = Guid.Parse("90A89389-7891-4784-90DF-F556E95BCCD9");
+        var inactiveStatusId = Guid.Parse("7F313E08-F83E-43DF-B550-C11014592AB7");
+        var suspendedStatusId = Guid.Parse("52EE270F-D6DE-4F96-A578-3C8E84AF4B9B");
+        var pendingStatusId = Guid.Parse("3981B8F5-FFBD-426A-ABDE-A723631B3536");
+
+        modelBuilder.Entity<UserStatusType>().HasData(
+            new UserStatusType
+            {
+                Id = activeStatusId,
+                Name = "active",
+                DisplayName = "Active",
+                Description = "User account is active and can access the system",
+                CreatedAt = new DateTime(2025, 10, 26, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UserStatusType
+            {
+                Id = inactiveStatusId,
+                Name = "inactive",
+                DisplayName = "Inactive",
+                Description = "User account is inactive and cannot access the system",
+                CreatedAt = new DateTime(2025, 10, 26, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UserStatusType
+            {
+                Id = suspendedStatusId,
+                Name = "suspended",
+                DisplayName = "Suspended",
+                Description = "User account has been temporarily suspended",
+                CreatedAt = new DateTime(2025, 10, 26, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new UserStatusType
+            {
+                Id = pendingStatusId,
+                Name = "pending",
+                DisplayName = "Pending",
+                Description = "User account is pending activation or verification",
+                CreatedAt = new DateTime(2025, 10, 26, 0, 0, 0, DateTimeKind.Utc)
+            }
+        );
 
         // Seed PermissionGroups
         var systemAdminGroupId = Guid.Parse("1A2B3C4D-5E6F-7890-ABCD-EF1234567890");

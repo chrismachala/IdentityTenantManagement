@@ -18,9 +18,10 @@ public class TenantUserRepository : ITenantUserRepository
         return await _context.TenantUsers
             .Include(tu => tu.Tenant)
             .Include(tu => tu.User)
-            .Include(tu => tu.Role)
-                .ThenInclude(r => r.RolePermissions)
-                    .ThenInclude(rp => rp.Permission)
+            .Include(tu => tu.TenantUserRoles)
+                .ThenInclude(tur => tur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(tu => tu.Id == id);
     }
 
@@ -29,9 +30,10 @@ public class TenantUserRepository : ITenantUserRepository
         return await _context.TenantUsers
             .Include(tu => tu.Tenant)
             .Include(tu => tu.User)
-            .Include(tu => tu.Role)
-                .ThenInclude(r => r.RolePermissions)
-                    .ThenInclude(rp => rp.Permission)
+            .Include(tu => tu.TenantUserRoles)
+                .ThenInclude(tur => tur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
             .ToListAsync();
     }
 
@@ -64,9 +66,10 @@ public class TenantUserRepository : ITenantUserRepository
     {
         return await _context.TenantUsers
             .Include(tu => tu.User)
-            .Include(tu => tu.Role)
-                .ThenInclude(r => r.RolePermissions)
-                    .ThenInclude(rp => rp.Permission)
+            .Include(tu => tu.TenantUserRoles)
+                .ThenInclude(tur => tur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
             .Where(tu => tu.TenantId == tenantId)
             .ToListAsync();
     }
@@ -75,9 +78,10 @@ public class TenantUserRepository : ITenantUserRepository
     {
         return await _context.TenantUsers
             .Include(tu => tu.Tenant)
-            .Include(tu => tu.Role)
-                .ThenInclude(r => r.RolePermissions)
-                    .ThenInclude(rp => rp.Permission)
+            .Include(tu => tu.TenantUserRoles)
+                .ThenInclude(tur => tur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
             .Where(tu => tu.UserId == userId)
             .ToListAsync();
     }
@@ -87,25 +91,28 @@ public class TenantUserRepository : ITenantUserRepository
         return await _context.TenantUsers
             .Include(tu => tu.Tenant)
             .Include(tu => tu.User)
-            .Include(tu => tu.Role)
-                .ThenInclude(r => r.RolePermissions)
-                    .ThenInclude(rp => rp.Permission)
+            .Include(tu => tu.TenantUserRoles)
+                .ThenInclude(tur => tur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId);
     }
 
     public async Task<List<string>> GetUserPermissionsAsync(Guid tenantId, Guid userId)
     {
         var tenantUser = await _context.TenantUsers
-            .Include(tu => tu.Role)
-                .ThenInclude(r => r.RolePermissions)
-                    .ThenInclude(rp => rp.Permission)
+            .Include(tu => tu.TenantUserRoles)
+                .ThenInclude(tur => tur.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(tu => tu.TenantId == tenantId && tu.UserId == userId);
 
         if (tenantUser == null)
             return new List<string>();
 
-        // Get permissions from role
-        var rolePermissions = tenantUser.Role.RolePermissions
+        // Get permissions from all roles
+        var rolePermissions = tenantUser.TenantUserRoles
+            .SelectMany(tur => tur.Role.RolePermissions)
             .Select(rp => rp.Permission.Name)
             .ToList();
 
@@ -123,7 +130,7 @@ public class TenantUserRepository : ITenantUserRepository
     public async Task<int> CountUsersWithRoleInTenantAsync(Guid tenantId, Guid roleId)
     {
         return await _context.TenantUsers
-            .Where(tu => tu.TenantId == tenantId && tu.RoleId == roleId)
+            .Where(tu => tu.TenantId == tenantId && tu.TenantUserRoles.Any(tur => tur.RoleId == roleId))
             .CountAsync();
     }
 }

@@ -53,6 +53,7 @@ public class DevCleanupController : ControllerBase
         var dbRecords = new Dictionary<string, int>
         {
             { "UserPermissions", 0 },
+            { "TenantUserRoles", 0 },
             { "TenantUsers", 0 },
             { "ExternalIdentities", 0 },
             { "RegistrationFailureLogs", 0 },
@@ -132,38 +133,44 @@ public class DevCleanupController : ControllerBase
                 dbRecords["UserPermissions"] = userPermissions.Count;
                 _logger.LogInformation("Marked {Count} UserPermissions for deletion", userPermissions.Count);
 
-                // 2. Delete TenantUsers (junction table, depends on Users and Tenants)
+                // 2. Delete TenantUserRoles (depends on TenantUsers)
+                var tenantUserRoles = await _dbContext.TenantUserRoles.ToListAsync();
+                _dbContext.TenantUserRoles.RemoveRange(tenantUserRoles);
+                dbRecords["TenantUserRoles"] = tenantUserRoles.Count;
+                _logger.LogInformation("Marked {Count} TenantUserRoles for deletion", tenantUserRoles.Count);
+
+                // 3. Delete TenantUsers (junction table, depends on Users and Tenants)
                 var tenantUsers = await _dbContext.TenantUsers.ToListAsync();
                 _dbContext.TenantUsers.RemoveRange(tenantUsers);
                 dbRecords["TenantUsers"] = tenantUsers.Count;
                 _logger.LogInformation("Marked {Count} TenantUsers for deletion", tenantUsers.Count);
 
-                // 3. Delete ExternalIdentities (depends on Users and Tenants)
+                // 4. Delete ExternalIdentities (depends on Users and Tenants)
                 var externalIdentities = await _dbContext.ExternalIdentities.ToListAsync();
                 _dbContext.ExternalIdentities.RemoveRange(externalIdentities);
                 dbRecords["ExternalIdentities"] = externalIdentities.Count;
                 _logger.LogInformation("Marked {Count} ExternalIdentities for deletion", externalIdentities.Count);
 
-                // 4. Delete RegistrationFailureLogs (independent table)
+                // 5. Delete RegistrationFailureLogs (independent table)
                 var registrationFailureLogs = await _dbContext.RegistrationFailureLogs.ToListAsync();
                 _dbContext.RegistrationFailureLogs.RemoveRange(registrationFailureLogs);
                 dbRecords["RegistrationFailureLogs"] = registrationFailureLogs.Count;
                 _logger.LogInformation("Marked {Count} RegistrationFailureLogs for deletion", registrationFailureLogs.Count);
 
-                // 5. Delete Users
+                // 6. Delete Users
                 var users = await _dbContext.Users.ToListAsync();
                 _dbContext.Users.RemoveRange(users);
                 dbRecords["Users"] = users.Count;
                 _logger.LogInformation("Marked {Count} Users for deletion", users.Count);
 
-                // 6. Delete TenantDomains (if separate table - check your DbContext)
+                // 7. Delete TenantDomains (if separate table - check your DbContext)
                 // Note: TenantDomain is referenced in OnModelCreating but not in DbSet
                 // If it exists, uncomment:
                 // var tenantDomains = await _dbContext.Set<TenantDomain>().ToListAsync();
                 // _dbContext.Set<TenantDomain>().RemoveRange(tenantDomains);
                 // dbRecords["TenantDomains"] = tenantDomains.Count;
 
-                // 7. Delete Tenants
+                // 8. Delete Tenants
                 var tenants = await _dbContext.Tenants.ToListAsync();
                 _dbContext.Tenants.RemoveRange(tenants);
                 dbRecords["Tenants"] = tenants.Count;
@@ -235,6 +242,9 @@ public class DevCleanupController : ControllerBase
             var userPermissions = await _dbContext.UserPermissions.ToListAsync();
             _dbContext.UserPermissions.RemoveRange(userPermissions);
 
+            var tenantUserRoles = await _dbContext.TenantUserRoles.ToListAsync();
+            _dbContext.TenantUserRoles.RemoveRange(tenantUserRoles);
+
             var tenantUsers = await _dbContext.TenantUsers.ToListAsync();
             _dbContext.TenantUsers.RemoveRange(tenantUsers);
 
@@ -262,6 +272,7 @@ public class DevCleanupController : ControllerBase
                 deletedRecords = new
                 {
                     UserPermissions = userPermissions.Count,
+                    TenantUserRoles = tenantUserRoles.Count,
                     TenantUsers = tenantUsers.Count,
                     ExternalIdentities = externalIdentities.Count,
                     RegistrationFailureLogs = registrationFailureLogs.Count,
@@ -369,6 +380,7 @@ public class DevCleanupController : ControllerBase
                 database = new
                 {
                     UserPermissions = await _dbContext.UserPermissions.CountAsync(),
+                    TenantUserRoles = await _dbContext.TenantUserRoles.CountAsync(),
                     TenantUsers = await _dbContext.TenantUsers.CountAsync(),
                     ExternalIdentities = await _dbContext.ExternalIdentities.CountAsync(),
                     RegistrationFailureLogs = await _dbContext.RegistrationFailureLogs.CountAsync(),

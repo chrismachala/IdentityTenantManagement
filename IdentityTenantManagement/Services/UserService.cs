@@ -190,13 +190,21 @@ public class UserService : IUserService
                 // Generate internal GUID for user (NOT using Keycloak GUID)
                 var userId = Guid.NewGuid();
 
+                // Get the active status
+                var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
+                if (activeStatus == null)
+                {
+                    throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
+                }
+
                 // Create user with internal GUID
                 var user = new User
                 {
                     Id = userId,
                     Email = email,
                     FirstName = firstName,
-                    LastName = lastName
+                    LastName = lastName,
+                    StatusId = activeStatus.Id
                 };
                 await _unitOfWork.Users.AddAsync(user);
 
@@ -215,7 +223,13 @@ public class UserService : IUserService
                 {
                     TenantId = tenantId,
                     UserId = userId,
-                    RoleId = orgUserRole.Id
+                    TenantUserRoles = new List<TenantUserRole>
+                    {
+                        new TenantUserRole
+                        {
+                            RoleId = orgUserRole.Id
+                        }
+                    }
                 };
                 await _unitOfWork.TenantUsers.AddAsync(tenantUser);
 

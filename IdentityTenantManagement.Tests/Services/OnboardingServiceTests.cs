@@ -178,7 +178,7 @@ namespace IdentityTenantManagement.Tests.Services
 
             // Verify TenantUser relationship is created with org-admin role
             _mockTenantUserRepository.Verify(x => x.AddAsync(It.Is<TenantUser>(tu =>
-                tu.RoleId == _orgAdminRole.Id
+                tu.TenantUserRoles.Any(tur => tur.RoleId == _orgAdminRole.Id)
             )), Times.Once);
         }
 

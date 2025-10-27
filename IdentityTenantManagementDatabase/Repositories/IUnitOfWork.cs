@@ -11,6 +11,7 @@ public interface IUnitOfWork : IDisposable
     ITenantUserRepository TenantUsers { get; }
     IRoleRepository Roles { get; }
     IPermissionRepository Permissions { get; }
+    IUserStatusTypeRepository UserStatusTypes { get; }
     IRegistrationFailureLogRepository RegistrationFailureLogs { get; }
 
     /// <summary>

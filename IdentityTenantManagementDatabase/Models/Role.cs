@@ -10,5 +10,5 @@ public class Role
 
     // Navigation
     public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
-    public ICollection<TenantUser> TenantUsers { get; set; } = new List<TenantUser>();
+    public ICollection<TenantUserRole> TenantUserRoles { get; set; } = new List<TenantUserRole>();
 }

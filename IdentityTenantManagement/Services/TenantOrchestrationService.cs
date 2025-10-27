@@ -268,13 +268,21 @@ public class TenantOrchestrationService : ITenantOrchestrationService
         // Generate internal GUID for user
         var userId = Guid.NewGuid();
 
+        // Get the active status
+        var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
+        if (activeStatus == null)
+        {
+            throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
+        }
+
         // Create user with internal GUID (basic info - full sync happens via RegistrationProcessorService)
         var user = new User
         {
             Id = userId,
             Email = model.Email ?? string.Empty,
             FirstName = model.FirstName ?? string.Empty,
-            LastName = model.LastName ?? string.Empty
+            LastName = model.LastName ?? string.Empty,
+            StatusId = activeStatus.Id
         };
         await _unitOfWork.Users.AddAsync(user);
 
@@ -300,7 +308,13 @@ public class TenantOrchestrationService : ITenantOrchestrationService
         {
             TenantId = tenantExternalIdentity.EntityId,
             UserId = userId,
-            RoleId = orgUserRole.Id
+            TenantUserRoles = new List<TenantUserRole>
+            {
+                new TenantUserRole
+                {
+                    RoleId = orgUserRole.Id
+                }
+            }
         };
         await _unitOfWork.TenantUsers.AddAsync(tenantUser);
     }

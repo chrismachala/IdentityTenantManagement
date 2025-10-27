@@ -181,13 +181,21 @@ public class OnboardingService : IOnboardingService
         var userId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
 
+        // Get the active status
+        var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
+        if (activeStatus == null)
+        {
+            throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
+        }
+
         // Create user with internal GUID
         var user = new User
         {
             Id = userId,
             Email = userRepresentation.Email,
             FirstName = userRepresentation.FirstName,
-            LastName = userRepresentation.LastName
+            LastName = userRepresentation.LastName,
+            StatusId = activeStatus.Id
         };
         await _unitOfWork.Users.AddAsync(user);
 
@@ -238,7 +246,13 @@ public class OnboardingService : IOnboardingService
         {
             TenantId = tenantId,
             UserId = userId,
-            RoleId = orgAdminRole.Id // First user should be org-admin
+            TenantUserRoles = new List<TenantUserRole> // First user should be org-admin
+            {
+                new TenantUserRole
+                {
+                    RoleId = orgAdminRole.Id
+                }
+            }
         };
         await _unitOfWork.TenantUsers.AddAsync(tenantUser);
     }
