@@ -13,6 +13,8 @@ public interface IUnitOfWork : IDisposable
     IPermissionRepository Permissions { get; }
     IUserStatusTypeRepository UserStatusTypes { get; }
     IRegistrationFailureLogRepository RegistrationFailureLogs { get; }
+    IUserProfileRepository UserProfiles { get; }
+    ITenantUserProfileRepository TenantUserProfiles { get; }
 
     /// <summary>
     /// Saves all changes made in this unit of work to the database.

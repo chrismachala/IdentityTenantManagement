@@ -9,7 +9,7 @@ namespace IdentityTenantManagement.Services;
 
 public interface IUserService
 {
-    Task UpdateUserAsync(string userId, CreateUserModel model);
+    Task UpdateUserAsync(string userId, EditUserModel model, string tenantId);
     Task AddInvitedUserToDatabaseAsync(string keycloakUserId, string keycloakTenantId, string email, string firstName, string lastName);
 }
 
@@ -32,115 +32,96 @@ public class UserService : IUserService
         _roleService = roleService;
     }
 
-    public async Task UpdateUserAsync(string userId, CreateUserModel model)
+    public async Task UpdateUserAsync(string userId, EditUserModel model, string tenantId)
     {
-        _logger.LogInformation("Starting update saga for user {UserId}", userId);
-
-        // Track saga state for compensating transactions
-        UserRepresentation? originalKeycloakUser = null;
-        bool keycloakUpdated = false;
-        bool databaseTransactionStarted = false;
+        _logger.LogInformation("Updating user profile for {UserId} in tenant {TenantId}", userId, tenantId);
 
         try
         {
-            // Step 1: Capture original Keycloak state for potential rollback
-            _logger.LogInformation("Saga Step 1: Capturing original Keycloak user state for {UserId}", userId);
-            originalKeycloakUser = await _kcUserService.GetUserByIdAsync(userId);
-            _logger.LogInformation("Saga Step 1: Original state captured - Email: {Email}, FirstName: {FirstName}, LastName: {LastName}",
-                originalKeycloakUser.Email, originalKeycloakUser.FirstName, originalKeycloakUser.LastName);
-
-            // Step 2: Update user in Keycloak
-            _logger.LogInformation("Saga Step 2: Updating user {UserId} in Keycloak", userId);
-            await _kcUserService.UpdateUserAsync(userId, model);
-            keycloakUpdated = true;
-            _logger.LogInformation("Saga Step 2: User updated successfully in Keycloak");
-
-            // Step 3: Update user in database with transaction
-            _logger.LogInformation("Saga Step 3: Updating user in database");
             var keycloakProviderId = Guid.Parse("049284C1-FF29-4F28-869F-F64300B69719");
-            var userExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(userId, keycloakProviderId);
 
+            // Get user's internal ID from Keycloak external identity
+            var userExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(userId, keycloakProviderId);
             if (userExternalIdentity == null)
             {
                 throw new InvalidOperationException($"External identity not found for Keycloak user {userId}. User may not be synchronized to database.");
             }
 
-            var user = await _unitOfWork.Users.GetByIdAsync(userExternalIdentity.EntityId);
-            if (user == null)
+            // Get tenant's internal ID from Keycloak external identity
+            var tenantExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(tenantId, keycloakProviderId);
+            if (tenantExternalIdentity == null)
             {
-                throw new InvalidOperationException($"User not found in database for external ID {userId}. Data inconsistency detected.");
+                throw new InvalidOperationException($"Tenant with Keycloak ID {tenantId} not found in database.");
+            }
+
+            // Get TenantUser relationship
+            var tenantUser = await _unitOfWork.TenantUsers.GetByTenantAndUserIdAsync(tenantExternalIdentity.EntityId, userExternalIdentity.EntityId);
+            if (tenantUser == null)
+            {
+                throw new InvalidOperationException($"User {userId} is not a member of tenant {tenantId}.");
             }
 
             // Begin database transaction
             await _unitOfWork.BeginTransactionAsync();
-            databaseTransactionStarted = true;
 
-            user.FirstName = model.FirstName;
-            user.LastName = model.LastName;
-            user.Email = model.Email;
+            try
+            {
+                // Get or create TenantUserProfile
+                var tenantUserProfile = await _unitOfWork.TenantUserProfiles.GetByTenantUserIdAsync(tenantUser.Id);
 
-            await _unitOfWork.Users.UpdateAsync(user);
-            await _unitOfWork.CommitAsync();
+                if (tenantUserProfile == null)
+                {
+                    _logger.LogInformation("Creating new profile for TenantUser {TenantUserId}", tenantUser.Id);
 
-            _logger.LogInformation("Saga completed successfully for user {UserId}", userId);
+                    // Create new UserProfile
+                    var userProfile = new UserProfile
+                    {
+                        FirstName = model.FirstName,
+                        LastName = model.LastName
+                    };
+                    await _unitOfWork.UserProfiles.AddAsync(userProfile);
+
+                    // Create TenantUserProfile linking
+                    tenantUserProfile = new TenantUserProfile
+                    {
+                        TenantUserId = tenantUser.Id,
+                        UserProfileId = userProfile.Id
+                    };
+                    await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
+                }
+                else
+                {
+                    _logger.LogInformation("Updating existing profile {ProfileId} for TenantUser {TenantUserId}",
+                        tenantUserProfile.UserProfileId, tenantUser.Id);
+
+                    // Update existing UserProfile
+                    var userProfile = await _unitOfWork.UserProfiles.GetByIdAsync(tenantUserProfile.UserProfileId);
+                    if (userProfile == null)
+                    {
+                        throw new InvalidOperationException($"UserProfile {tenantUserProfile.UserProfileId} not found.");
+                    }
+
+                    userProfile.FirstName = model.FirstName;
+                    userProfile.LastName = model.LastName;
+                    userProfile.UpdatedAt = DateTime.UtcNow;
+
+                    await _unitOfWork.UserProfiles.UpdateAsync(userProfile);
+                }
+
+                await _unitOfWork.CommitAsync();
+                _logger.LogInformation("Successfully updated user profile for {UserId} in tenant {TenantId}", userId, tenantId);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackAsync();
+                _logger.LogError("Failed to update user profile. Transaction rolled back.");
+                throw;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Saga failed for user {UserId}. Starting compensating transactions. State: KeycloakUpdated={KeycloakUpdated}, DbTransaction={DbTransaction}",
-                userId, keycloakUpdated, databaseTransactionStarted);
-
-            // Execute compensating transactions in reverse order
-            await ExecuteUpdateCompensatingTransactionsAsync(userId, originalKeycloakUser, keycloakUpdated, databaseTransactionStarted);
-
+            _logger.LogError(ex, "Error updating user profile for {UserId} in tenant {TenantId}", userId, tenantId);
             throw;
-        }
-    }
-
-    /// <summary>
-    /// Executes compensating transactions to rollback update changes
-    /// </summary>
-    private async Task ExecuteUpdateCompensatingTransactionsAsync(
-        string userId,
-        UserRepresentation? originalKeycloakUser,
-        bool keycloakUpdated,
-        bool databaseTransactionStarted)
-    {
-        // Compensate Step 3: Rollback database transaction
-        if (databaseTransactionStarted)
-        {
-            try
-            {
-                _logger.LogWarning("Compensating transaction: Rolling back database transaction for user {UserId}", userId);
-                await _unitOfWork.RollbackAsync();
-                _logger.LogInformation("Database transaction rolled back successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to rollback database transaction for user {UserId}", userId);
-            }
-        }
-
-        // Compensate Step 2: Restore original Keycloak user state
-        if (keycloakUpdated && originalKeycloakUser != null)
-        {
-            try
-            {
-                _logger.LogWarning("Compensating transaction: Restoring original Keycloak user state for {UserId}", userId);
-                var restoreModel = new CreateUserModel
-                {
-                    FirstName = originalKeycloakUser.FirstName ?? string.Empty,
-                    LastName = originalKeycloakUser.LastName ?? string.Empty,
-                    Email = originalKeycloakUser.Email ?? string.Empty,
-                    UserName = originalKeycloakUser.Username ?? string.Empty,
-                    Password = string.Empty // Password not needed for update
-                };
-                await _kcUserService.UpdateUserAsync(userId, restoreModel);
-                _logger.LogInformation("Keycloak user state restored successfully for {UserId}", userId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to restore Keycloak user state for {UserId}. Manual intervention may be required.", userId);
-            }
         }
     }
 
@@ -197,13 +178,11 @@ public class UserService : IUserService
                     throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
                 }
 
-                // Create user with internal GUID
+                // Create user with internal GUID (without name - that goes in profile)
                 var user = new User
                 {
                     Id = userId,
                     Email = email,
-                    FirstName = firstName,
-                    LastName = lastName,
                     StatusId = activeStatus.Id
                 };
                 await _unitOfWork.Users.AddAsync(user);
@@ -232,6 +211,22 @@ public class UserService : IUserService
                     }
                 };
                 await _unitOfWork.TenantUsers.AddAsync(tenantUser);
+
+                // Create UserProfile with the user's name
+                var userProfile = new UserProfile
+                {
+                    FirstName = firstName,
+                    LastName = lastName
+                };
+                await _unitOfWork.UserProfiles.AddAsync(userProfile);
+
+                // Create TenantUserProfile linking the profile to this tenant-user relationship
+                var tenantUserProfile = new TenantUserProfile
+                {
+                    TenantUserId = tenantUser.Id,
+                    UserProfileId = userProfile.Id
+                };
+                await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
 
                 // Commit all changes atomically
                 await _unitOfWork.CommitAsync();

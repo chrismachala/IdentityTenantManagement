@@ -347,13 +347,11 @@ public class UserOrchestrationService : IUserOrchestrationService
             throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
         }
 
-        // Create user with internal GUID
+        // Create user with internal GUID (without name - that goes in profile)
         var user = new User
         {
             Id = userId,
             Email = userRepresentation.Email ?? string.Empty,
-            FirstName = userRepresentation.FirstName ?? string.Empty,
-            LastName = userRepresentation.LastName ?? string.Empty,
             StatusId = activeStatus.Id
         };
         await _unitOfWork.Users.AddAsync(user);
@@ -397,6 +395,22 @@ public class UserOrchestrationService : IUserOrchestrationService
                 }
             };
             await _unitOfWork.TenantUsers.AddAsync(tenantUser);
+
+            // Create UserProfile with the user's name from Keycloak
+            var userProfile = new UserProfile
+            {
+                FirstName = userRepresentation.FirstName ?? string.Empty,
+                LastName = userRepresentation.LastName ?? string.Empty
+            };
+            await _unitOfWork.UserProfiles.AddAsync(userProfile);
+
+            // Create TenantUserProfile linking the profile to this tenant-user relationship
+            var tenantUserProfile = new TenantUserProfile
+            {
+                TenantUserId = tenantUser.Id,
+                UserProfileId = userProfile.Id
+            };
+            await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
         }
     }
 }

@@ -25,6 +25,8 @@ public class IdentityTenantManagementContext : DbContext
     public DbSet<UserStatusType> UserStatusTypes => Set<UserStatusType>();
     public DbSet<GlobalSettings> GlobalSettings => Set<GlobalSettings>();
     public DbSet<RegistrationFailureLog> RegistrationFailureLogs => Set<RegistrationFailureLog>();
+    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+    public DbSet<TenantUserProfile> TenantUserProfiles => Set<TenantUserProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -354,6 +356,24 @@ public class IdentityTenantManagementContext : DbContext
                 CreatedAt = new DateTime(2025, 10, 19, 0, 0, 0, DateTimeKind.Utc)
             }
         );
+
+        // Configure TenantUserProfile relationships
+        modelBuilder.Entity<TenantUserProfile>()
+            .HasOne(tup => tup.TenantUser)
+            .WithMany()
+            .HasForeignKey(tup => tup.TenantUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TenantUserProfile>()
+            .HasOne(tup => tup.UserProfile)
+            .WithMany(up => up.TenantUserProfiles)
+            .HasForeignKey(tup => tup.UserProfileId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Unique constraint for TenantUserProfile (one profile per TenantUser)
+        modelBuilder.Entity<TenantUserProfile>()
+            .HasIndex(tup => tup.TenantUserId)
+            .IsUnique();
     }
 
 }

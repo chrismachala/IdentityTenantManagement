@@ -54,7 +54,9 @@ public class DevCleanupController : ControllerBase
         {
             { "UserPermissions", 0 },
             { "TenantUserRoles", 0 },
+            { "TenantUserProfiles", 0 },
             { "TenantUsers", 0 },
+            { "UserProfiles", 0 },
             { "ExternalIdentities", 0 },
             { "RegistrationFailureLogs", 0 },
             { "Users", 0 },
@@ -139,13 +141,25 @@ public class DevCleanupController : ControllerBase
                 dbRecords["TenantUserRoles"] = tenantUserRoles.Count;
                 _logger.LogInformation("Marked {Count} TenantUserRoles for deletion", tenantUserRoles.Count);
 
-                // 3. Delete TenantUsers (junction table, depends on Users and Tenants)
+                // 3. Delete TenantUserProfiles (depends on TenantUsers and UserProfiles)
+                var tenantUserProfiles = await _dbContext.TenantUserProfiles.ToListAsync();
+                _dbContext.TenantUserProfiles.RemoveRange(tenantUserProfiles);
+                dbRecords["TenantUserProfiles"] = tenantUserProfiles.Count;
+                _logger.LogInformation("Marked {Count} TenantUserProfiles for deletion", tenantUserProfiles.Count);
+
+                // 4. Delete TenantUsers (junction table, depends on Users and Tenants)
                 var tenantUsers = await _dbContext.TenantUsers.ToListAsync();
                 _dbContext.TenantUsers.RemoveRange(tenantUsers);
                 dbRecords["TenantUsers"] = tenantUsers.Count;
                 _logger.LogInformation("Marked {Count} TenantUsers for deletion", tenantUsers.Count);
 
-                // 4. Delete ExternalIdentities (depends on Users and Tenants)
+                // 5. Delete UserProfiles (after TenantUserProfiles are deleted)
+                var userProfiles = await _dbContext.UserProfiles.ToListAsync();
+                _dbContext.UserProfiles.RemoveRange(userProfiles);
+                dbRecords["UserProfiles"] = userProfiles.Count;
+                _logger.LogInformation("Marked {Count} UserProfiles for deletion", userProfiles.Count);
+
+                // 6. Delete ExternalIdentities (depends on Users and Tenants)
                 var externalIdentities = await _dbContext.ExternalIdentities.ToListAsync();
                 _dbContext.ExternalIdentities.RemoveRange(externalIdentities);
                 dbRecords["ExternalIdentities"] = externalIdentities.Count;
@@ -245,8 +259,14 @@ public class DevCleanupController : ControllerBase
             var tenantUserRoles = await _dbContext.TenantUserRoles.ToListAsync();
             _dbContext.TenantUserRoles.RemoveRange(tenantUserRoles);
 
+            var tenantUserProfiles = await _dbContext.TenantUserProfiles.ToListAsync();
+            _dbContext.TenantUserProfiles.RemoveRange(tenantUserProfiles);
+
             var tenantUsers = await _dbContext.TenantUsers.ToListAsync();
             _dbContext.TenantUsers.RemoveRange(tenantUsers);
+
+            var userProfiles = await _dbContext.UserProfiles.ToListAsync();
+            _dbContext.UserProfiles.RemoveRange(userProfiles);
 
             var externalIdentities = await _dbContext.ExternalIdentities.ToListAsync();
             _dbContext.ExternalIdentities.RemoveRange(externalIdentities);
@@ -273,7 +293,9 @@ public class DevCleanupController : ControllerBase
                 {
                     UserPermissions = userPermissions.Count,
                     TenantUserRoles = tenantUserRoles.Count,
+                    TenantUserProfiles = tenantUserProfiles.Count,
                     TenantUsers = tenantUsers.Count,
+                    UserProfiles = userProfiles.Count,
                     ExternalIdentities = externalIdentities.Count,
                     RegistrationFailureLogs = registrationFailureLogs.Count,
                     Users = users.Count,
@@ -381,7 +403,9 @@ public class DevCleanupController : ControllerBase
                 {
                     UserPermissions = await _dbContext.UserPermissions.CountAsync(),
                     TenantUserRoles = await _dbContext.TenantUserRoles.CountAsync(),
+                    TenantUserProfiles = await _dbContext.TenantUserProfiles.CountAsync(),
                     TenantUsers = await _dbContext.TenantUsers.CountAsync(),
+                    UserProfiles = await _dbContext.UserProfiles.CountAsync(),
                     ExternalIdentities = await _dbContext.ExternalIdentities.CountAsync(),
                     RegistrationFailureLogs = await _dbContext.RegistrationFailureLogs.CountAsync(),
                     Users = await _dbContext.Users.CountAsync(),

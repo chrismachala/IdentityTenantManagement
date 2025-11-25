@@ -192,9 +192,7 @@ public class OnboardingService : IOnboardingService
         var user = new User
         {
             Id = userId,
-            Email = userRepresentation.Email,
-            FirstName = userRepresentation.FirstName,
-            LastName = userRepresentation.LastName,
+            Email = userRepresentation.Email, 
             StatusId = activeStatus.Id
         };
         await _unitOfWork.Users.AddAsync(user);
@@ -255,5 +253,21 @@ public class OnboardingService : IOnboardingService
             }
         };
         await _unitOfWork.TenantUsers.AddAsync(tenantUser);
+
+        // Create UserProfile with the user's name from Keycloak
+        var userProfile = new UserProfile
+        {
+            FirstName = userRepresentation.FirstName ?? string.Empty,
+            LastName = userRepresentation.LastName ?? string.Empty
+        };
+        await _unitOfWork.UserProfiles.AddAsync(userProfile);
+
+        // Create TenantUserProfile linking the profile to this tenant-user relationship
+        var tenantUserProfile = new TenantUserProfile
+        {
+            TenantUserId = tenantUser.Id,
+            UserProfileId = userProfile.Id
+        };
+        await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
     }
 }

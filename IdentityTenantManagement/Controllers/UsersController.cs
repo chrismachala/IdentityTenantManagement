@@ -53,9 +53,15 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{userId}")]
-    public async Task<IActionResult> UpdateUser(string userId, [FromBody] CreateUserModel body)
+    public async Task<IActionResult> UpdateUser(string userId, [FromBody] EditUserModel body)
     {
-        await _userService.UpdateUserAsync(userId, body);
+        var tenantId = User.FindFirst("tenant_id")?.Value;
+        if (string.IsNullOrEmpty(tenantId))
+        {
+            return Unauthorized(new { message = "Tenant context not found" });
+        }
+
+        await _userService.UpdateUserAsync(userId, body, tenantId);
         return Ok(new {message="User updated successfully"});
     }
 

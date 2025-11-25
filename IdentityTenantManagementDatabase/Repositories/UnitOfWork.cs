@@ -16,6 +16,8 @@ public class UnitOfWork : IUnitOfWork
     private IPermissionRepository? _permissionRepository;
     private IUserStatusTypeRepository? _userStatusTypeRepository;
     private IRegistrationFailureLogRepository? _registrationFailureLogRepository;
+    private IUserProfileRepository? _userProfileRepository;
+    private ITenantUserProfileRepository? _tenantUserProfileRepository;
 
     public UnitOfWork(IdentityTenantManagementContext context)
     {
@@ -39,6 +41,10 @@ public class UnitOfWork : IUnitOfWork
     public IUserStatusTypeRepository UserStatusTypes => _userStatusTypeRepository ??= new UserStatusTypeRepository(_context);
 
     public IRegistrationFailureLogRepository RegistrationFailureLogs => _registrationFailureLogRepository ??= new RegistrationFailureLogRepository(_context);
+
+    public IUserProfileRepository UserProfiles => _userProfileRepository ??= new UserProfileRepository(_context);
+
+    public ITenantUserProfileRepository TenantUserProfiles => _tenantUserProfileRepository ??= new TenantUserProfileRepository(_context);
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

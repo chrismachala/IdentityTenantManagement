@@ -23,11 +23,15 @@ namespace IdentityTenantManagement.Tests.Services
         private Mock<IExternalIdentityRepository> _mockExternalIdentityRepository;
         private Mock<IIdentityProviderRepository> _mockIdentityProviderRepository;
         private Mock<ITenantUserRepository> _mockTenantUserRepository;
+        private Mock<IUserProfileRepository> _mockUserProfileRepository;
+        private Mock<ITenantUserProfileRepository> _mockTenantUserProfileRepository;
+        private Mock<IUserStatusTypeRepository> _mockUserStatusTypeRepository;
         private Mock<ILogger<OnboardingService>> _mockLogger;
         private OnboardingService _service;
         private IdentityProvider _keycloakProvider;
         private Mock<IRoleService> _mockRoleService;
         private Role _orgAdminRole;
+        private UserStatusType _activeStatus;
 
         [SetUp]
         public void Setup()
@@ -40,6 +44,9 @@ namespace IdentityTenantManagement.Tests.Services
             _mockExternalIdentityRepository = new Mock<IExternalIdentityRepository>();
             _mockIdentityProviderRepository = new Mock<IIdentityProviderRepository>();
             _mockTenantUserRepository = new Mock<ITenantUserRepository>();
+            _mockUserProfileRepository = new Mock<IUserProfileRepository>();
+            _mockTenantUserProfileRepository = new Mock<ITenantUserProfileRepository>();
+            _mockUserStatusTypeRepository = new Mock<IUserStatusTypeRepository>();
             _mockLogger = new Mock<ILogger<OnboardingService>>();
             _mockRoleService = new Mock<IRoleService>();
 
@@ -60,12 +67,22 @@ namespace IdentityTenantManagement.Tests.Services
                 Description = "Full access to organization settings and user management"
             };
 
+            // Set up the active user status
+            _activeStatus = new UserStatusType
+            {
+                Id = Guid.NewGuid(),
+                Name = "active"
+            };
+
             // Set up repository properties on UnitOfWork
             _mockUnitOfWork.Setup(x => x.Users).Returns(_mockUserRepository.Object);
             _mockUnitOfWork.Setup(x => x.Tenants).Returns(_mockTenantRepository.Object);
             _mockUnitOfWork.Setup(x => x.ExternalIdentities).Returns(_mockExternalIdentityRepository.Object);
             _mockUnitOfWork.Setup(x => x.IdentityProviders).Returns(_mockIdentityProviderRepository.Object);
             _mockUnitOfWork.Setup(x => x.TenantUsers).Returns(_mockTenantUserRepository.Object);
+            _mockUnitOfWork.Setup(x => x.UserProfiles).Returns(_mockUserProfileRepository.Object);
+            _mockUnitOfWork.Setup(x => x.TenantUserProfiles).Returns(_mockTenantUserProfileRepository.Object);
+            _mockUnitOfWork.Setup(x => x.UserStatusTypes).Returns(_mockUserStatusTypeRepository.Object);
 
             // Mock IdentityProvider lookup
             _mockIdentityProviderRepository
@@ -76,6 +93,11 @@ namespace IdentityTenantManagement.Tests.Services
             _mockRoleService
                 .Setup(x => x.GetRoleByNameAsync("org-admin"))
                 .ReturnsAsync(_orgAdminRole);
+
+            // Mock UserStatusType lookup
+            _mockUserStatusTypeRepository
+                .Setup(x => x.GetByNameAsync("active"))
+                .ReturnsAsync(_activeStatus);
 
             _service = new OnboardingService(
                 _mockOrgService.Object,
@@ -152,9 +174,7 @@ namespace IdentityTenantManagement.Tests.Services
 
             // Verify User is created with internal GUID (NOT Keycloak GUID)
             _mockUserRepository.Verify(x => x.AddAsync(It.Is<User>(u =>
-                u.Email == "user@example.com" &&
-                u.FirstName == "John" &&
-                u.LastName == "Doe"
+                u.Email == "user@example.com"
             )), Times.Once);
 
             // Verify Tenant is created with internal GUID (NOT Keycloak GUID)
@@ -180,6 +200,15 @@ namespace IdentityTenantManagement.Tests.Services
             _mockTenantUserRepository.Verify(x => x.AddAsync(It.Is<TenantUser>(tu =>
                 tu.TenantUserRoles.Any(tur => tur.RoleId == _orgAdminRole.Id)
             )), Times.Once);
+
+            // Verify UserProfile is created with user's name from Keycloak
+            _mockUserProfileRepository.Verify(x => x.AddAsync(It.Is<UserProfile>(up =>
+                up.FirstName == "John" &&
+                up.LastName == "Doe"
+            )), Times.Once);
+
+            // Verify TenantUserProfile is created linking the profile to the tenant-user relationship
+            _mockTenantUserProfileRepository.Verify(x => x.AddAsync(It.IsAny<TenantUserProfile>()), Times.Once);
         }
 
         [Test]
