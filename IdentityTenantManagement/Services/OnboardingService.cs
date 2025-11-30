@@ -192,8 +192,7 @@ public class OnboardingService : IOnboardingService
         var user = new User
         {
             Id = userId,
-            Email = userRepresentation.Email, 
-            StatusId = activeStatus.Id
+            Email = userRepresentation.Email
         };
         await _unitOfWork.Users.AddAsync(user);
 
@@ -258,7 +257,8 @@ public class OnboardingService : IOnboardingService
         var userProfile = new UserProfile
         {
             FirstName = userRepresentation.FirstName ?? string.Empty,
-            LastName = userRepresentation.LastName ?? string.Empty
+            LastName = userRepresentation.LastName ?? string.Empty,
+            StatusId = activeStatus.Id
         };
         await _unitOfWork.UserProfiles.AddAsync(userProfile);
 

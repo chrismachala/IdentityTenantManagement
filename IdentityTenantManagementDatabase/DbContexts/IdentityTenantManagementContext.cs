@@ -163,11 +163,11 @@ public class IdentityTenantManagementContext : DbContext
             .HasIndex(up => new { up.TenantUserId, up.PermissionId })
             .IsUnique();
 
-        // Configure User-UserStatusType relationship
-        modelBuilder.Entity<User>()
-            .HasOne(u => u.Status)
-            .WithMany(ust => ust.Users)
-            .HasForeignKey(u => u.StatusId)
+        // Configure UserProfile-UserStatusType relationship
+        modelBuilder.Entity<UserProfile>()
+            .HasOne(up => up.Status)
+            .WithMany(ust => ust.UserProfiles)
+            .HasForeignKey(up => up.StatusId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Unique constraint for GlobalSettings.Key

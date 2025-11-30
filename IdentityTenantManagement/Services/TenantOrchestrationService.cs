@@ -279,8 +279,7 @@ public class TenantOrchestrationService : ITenantOrchestrationService
         var user = new User
         {
             Id = userId,
-            Email = model.Email ?? string.Empty, 
-            StatusId = activeStatus.Id
+            Email = model.Email ?? string.Empty
         };
         await _unitOfWork.Users.AddAsync(user);
 

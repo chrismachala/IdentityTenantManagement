@@ -182,8 +182,7 @@ public class UserService : IUserService
                 var user = new User
                 {
                     Id = userId,
-                    Email = email,
-                    StatusId = activeStatus.Id
+                    Email = email
                 };
                 await _unitOfWork.Users.AddAsync(user);
 
@@ -216,7 +215,8 @@ public class UserService : IUserService
                 var userProfile = new UserProfile
                 {
                     FirstName = firstName,
-                    LastName = lastName
+                    LastName = lastName,
+                    StatusId = activeStatus.Id
                 };
                 await _unitOfWork.UserProfiles.AddAsync(userProfile);
 

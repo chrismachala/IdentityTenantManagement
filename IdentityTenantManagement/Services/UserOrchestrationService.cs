@@ -351,8 +351,7 @@ public class UserOrchestrationService : IUserOrchestrationService
         var user = new User
         {
             Id = userId,
-            Email = userRepresentation.Email ?? string.Empty,
-            StatusId = activeStatus.Id
+            Email = userRepresentation.Email ?? string.Empty
         };
         await _unitOfWork.Users.AddAsync(user);
 
@@ -400,7 +399,8 @@ public class UserOrchestrationService : IUserOrchestrationService
             var userProfile = new UserProfile
             {
                 FirstName = userRepresentation.FirstName ?? string.Empty,
-                LastName = userRepresentation.LastName ?? string.Empty
+                LastName = userRepresentation.LastName ?? string.Empty,
+                StatusId = activeStatus.Id
             };
             await _unitOfWork.UserProfiles.AddAsync(userProfile);
 

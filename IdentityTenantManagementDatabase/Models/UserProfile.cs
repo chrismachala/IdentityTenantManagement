@@ -5,6 +5,8 @@ public class UserProfile
     public Guid Id { get; set; }
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
+    public Guid StatusId { get; set; }
+    public UserStatusType Status { get; set; } = default!;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
