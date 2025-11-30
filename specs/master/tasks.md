@@ -35,33 +35,33 @@ Multi-project C# .NET 9.0 solution:
 
 ### Research Tasks
 
-- [ ] T001 [P] Create research.md file in specs/master/research.md
-- [ ] T002 [P] Document Saga Pattern implementation by analyzing IdentityTenantManagement/Services/RegistrationProcessorService.cs
-- [ ] T003 [P] Document rollback strategies for failed Keycloak operations in RegistrationProcessorService.cs
-- [ ] T004 Verify idempotency of compensating transactions in saga workflow and document in research.md section "Saga Pattern for Distributed Transactions"
-- [ ] T005 [P] Audit OnboardingController.cs for SQL injection, XSS, and command injection vulnerabilities
-- [ ] T006 [P] Audit TenantsController.cs for injection vulnerabilities
-- [ ] T007 [P] Audit UsersController.cs for injection vulnerabilities
-- [ ] T008 [P] Audit AuthenticationController.cs for injection vulnerabilities
-- [ ] T009 Verify RequirePermissionAttribute usage across all controllers (authentication vs authorization check)
-- [ ] T010 Review GlobalExceptionHandler.cs (IdentityTenantManagement/Middleware/) for information leakage in error responses
-- [ ] T011 Review RegistrationFailureLog entity (IdentityTenantManagementDatabase/Models/) for sensitive data logging risks
-- [ ] T012 Validate CORS configuration in IdentityTenantManagement/Program.cs
-- [ ] T013 Document OWASP Top 10 audit findings in research.md section "Security Compliance Audit"
-- [ ] T014 [P] Research ASP.NET Core API versioning options (Asp.Versioning.Mvc, URL path vs header vs query string)
-- [ ] T015 [P] Define deprecation policy (warning period, timeline, breaking change process)
-- [ ] T016 Plan API versioning implementation for OnboardingController, TenantsController, UsersController, AuthenticationController
-- [ ] T017 Document API versioning strategy in research.md section "API Versioning Implementation Plan"
-- [ ] T018 [P] Identify tenant isolation test scenarios (attempt cross-tenant data access via repository methods)
-- [ ] T019 [P] Define contract test structure for KeycloakAdapter (CreateRealm, CreateUser, AssignRole, DeleteRealm)
-- [ ] T020 [P] Plan integration tests for OnboardingService saga workflow (success path, Keycloak failure, rollback verification)
-- [ ] T021 Document test coverage expansion plan in research.md section "Test Coverage Roadmap"
-- [ ] T022 [P] Review existing seed data implementation in IdentityTenantManagementDatabase (search for OnModelCreating or seed classes)
-- [ ] T023 Document seed data idempotency guarantees (INSERT vs UPSERT logic) in research.md section "Seed Data Implementation"
-- [ ] T024 [P] Research payment gateway integration patterns for Stripe and PayPal
-- [ ] T025 [P] Define product tiering model (plan levels: Free, Pro, Enterprise; feature flags per tier)
-- [ ] T026 [P] Plan financial reporting requirements (revenue tracking, usage metrics, invoicing)
-- [ ] T027 Document payment and reporting architecture in research.md section "Payment and Reporting Future Architecture"
+- [X] T001 [P] Create research.md file in specs/master/research.md
+- [X] T002 [P] Document Saga Pattern implementation by analyzing IdentityTenantManagement/Services/RegistrationProcessorService.cs
+- [X] T003 [P] Document rollback strategies for failed Keycloak operations in RegistrationProcessorService.cs
+- [X] T004 Verify idempotency of compensating transactions in saga workflow and document in research.md section "Saga Pattern for Distributed Transactions"
+- [X] T005 [P] Audit OnboardingController.cs for SQL injection, XSS, and command injection vulnerabilities
+- [X] T006 [P] Audit TenantsController.cs for injection vulnerabilities
+- [X] T007 [P] Audit UsersController.cs for injection vulnerabilities
+- [X] T008 [P] Audit AuthenticationController.cs for injection vulnerabilities
+- [X] T009 Verify RequirePermissionAttribute usage across all controllers (authentication vs authorization check)
+- [X] T010 Review GlobalExceptionHandler.cs (IdentityTenantManagement/Middleware/) for information leakage in error responses
+- [X] T011 Review RegistrationFailureLog entity (IdentityTenantManagementDatabase/Models/) for sensitive data logging risks
+- [X] T012 Validate CORS configuration in IdentityTenantManagement/Program.cs
+- [X] T013 Document OWASP Top 10 audit findings in research.md section "Security Compliance Audit"
+- [X] T014 [P] Research ASP.NET Core API versioning options (Asp.Versioning.Mvc, URL path vs header vs query string)
+- [X] T015 [P] Define deprecation policy (warning period, timeline, breaking change process)
+- [X] T016 Plan API versioning implementation for OnboardingController, TenantsController, UsersController, AuthenticationController
+- [X] T017 Document API versioning strategy in research.md section "API Versioning Implementation Plan"
+- [X] T018 [P] Identify tenant isolation test scenarios (attempt cross-tenant data access via repository methods)
+- [X] T019 [P] Define contract test structure for KeycloakAdapter (CreateRealm, CreateUser, AssignRole, DeleteRealm)
+- [X] T020 [P] Plan integration tests for OnboardingService saga workflow (success path, Keycloak failure, rollback verification)
+- [X] T021 Document test coverage expansion plan in research.md section "Test Coverage Roadmap"
+- [X] T022 [P] Review existing seed data implementation in IdentityTenantManagementDatabase (search for OnModelCreating or seed classes)
+- [X] T023 Document seed data idempotency guarantees (INSERT vs UPSERT logic) in research.md section "Seed Data Implementation"
+- [X] T024 [P] Research payment gateway integration patterns for Stripe and PayPal
+- [X] T025 [P] Define product tiering model (plan levels: Free, Pro, Enterprise; feature flags per tier)
+- [X] T026 [P] Plan financial reporting requirements (revenue tracking, usage metrics, invoicing)
+- [X] T027 Document payment and reporting architecture in research.md section "Payment and Reporting Future Architecture"
 
 **Checkpoint**: research.md complete with all 6 sections (Saga Pattern, Security Audit, API Versioning, Test Coverage, Seed Data, Payment Architecture)
 
