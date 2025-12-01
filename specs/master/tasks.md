@@ -77,58 +77,58 @@ Multi-project C# .NET 9.0 solution:
 
 ### Data Model Documentation
 
-- [ ] T028 Create data-model.md file in specs/master/data-model.md
-- [ ] T029 Document Tenant entity (fields, types, nullability, relationships) from IdentityTenantManagementDatabase/Models/Tenant.cs
-- [ ] T030 [P] Document TenantDomain entity from IdentityTenantManagementDatabase/Models/TenantDomain.cs
-- [ ] T031 [P] Document TenantUser entity (tenant-user relationship) from IdentityTenantManagementDatabase/Models/TenantUser.cs
-- [ ] T032 [P] Document TenantUserRole entity from IdentityTenantManagementDatabase/Models/TenantUserRole.cs
-- [ ] T033 [P] Document TenantUserProfile entity from IdentityTenantManagementDatabase/Models/TenantUserProfile.cs
-- [ ] T034 [P] Document User entity (global user) from IdentityTenantManagementDatabase/Models/User.cs
-- [ ] T035 [P] Document UserProfile entity from IdentityTenantManagementDatabase/Models/UserProfile.cs
-- [ ] T036 [P] Document UserStatusType entity from IdentityTenantManagementDatabase/Models/UserStatusType.cs
-- [ ] T037 [P] Document Role entity from IdentityTenantManagementDatabase/Models/Role.cs
-- [ ] T038 [P] Document RolePermission entity from IdentityTenantManagementDatabase/Models/RolePermission.cs
-- [ ] T039 [P] Document Permission entity from IdentityTenantManagementDatabase/Models/Permission.cs
-- [ ] T040 [P] Document PermissionGroup entity from IdentityTenantManagementDatabase/Models/PermissionGroup.cs
-- [ ] T041 [P] Document UserPermission entity from IdentityTenantManagementDatabase/Models/UserPermission.cs
-- [ ] T042 [P] Document IdentityProvider entity from IdentityTenantManagementDatabase/Models/IdentityProvider.cs
-- [ ] T043 [P] Document ExternalIdentity entity from IdentityTenantManagementDatabase/Models/ExternalIdentity.cs
-- [ ] T044 [P] Document ExternalIdentityEntityType entity from IdentityTenantManagementDatabase/Models/ExternalIdentityEntityType.cs
-- [ ] T045 [P] Document GlobalSettings entity from IdentityTenantManagementDatabase/Models/GlobalSettings.cs
-- [ ] T046 [P] Document RegistrationFailureLog entity from IdentityTenantManagementDatabase/Models/RegistrationFailureLog.cs
-- [ ] T047 Add entity relationship diagram (ERD) showing all relationships (one-to-many, many-to-many) to data-model.md
-- [ ] T048 Document tenant isolation boundaries (which entities are tenant-scoped vs global) in data-model.md
-- [ ] T049 Document recommended indexes (TenantId, UserId, Email, etc.) for performance in data-model.md
-- [ ] T050 Document validation rules per entity (required fields, string lengths, regex patterns) in data-model.md
-- [ ] T051 Document state transitions (UserStatusType lifecycle: Active, Suspended, Deleted) in data-model.md
+- [X] T028 Create data-model.md file in specs/master/data-model.md
+- [X] T029 Document Tenant entity (fields, types, nullability, relationships) from IdentityTenantManagementDatabase/Models/Tenant.cs
+- [X] T030 [P] Document TenantDomain entity from IdentityTenantManagementDatabase/Models/TenantDomain.cs
+- [X] T031 [P] Document TenantUser entity (tenant-user relationship) from IdentityTenantManagementDatabase/Models/TenantUser.cs
+- [X] T032 [P] Document TenantUserRole entity from IdentityTenantManagementDatabase/Models/TenantUserRole.cs
+- [X] T033 [P] Document TenantUserProfile entity from IdentityTenantManagementDatabase/Models/TenantUserProfile.cs
+- [X] T034 [P] Document User entity (global user) from IdentityTenantManagementDatabase/Models/User.cs
+- [X] T035 [P] Document UserProfile entity from IdentityTenantManagementDatabase/Models/UserProfile.cs
+- [X] T036 [P] Document UserStatusType entity from IdentityTenantManagementDatabase/Models/UserStatusType.cs
+- [X] T037 [P] Document Role entity from IdentityTenantManagementDatabase/Models/Role.cs
+- [X] T038 [P] Document RolePermission entity from IdentityTenantManagementDatabase/Models/RolePermission.cs
+- [X] T039 [P] Document Permission entity from IdentityTenantManagementDatabase/Models/Permission.cs
+- [X] T040 [P] Document PermissionGroup entity from IdentityTenantManagementDatabase/Models/PermissionGroup.cs
+- [X] T041 [P] Document UserPermission entity from IdentityTenantManagementDatabase/Models/UserPermission.cs
+- [X] T042 [P] Document IdentityProvider entity from IdentityTenantManagementDatabase/Models/IdentityProvider.cs
+- [X] T043 [P] Document ExternalIdentity entity from IdentityTenantManagementDatabase/Models/ExternalIdentity.cs
+- [X] T044 [P] Document ExternalIdentityEntityType entity from IdentityTenantManagementDatabase/Models/ExternalIdentityEntityType.cs
+- [X] T045 [P] Document GlobalSettings entity from IdentityTenantManagementDatabase/Models/GlobalSettings.cs
+- [X] T046 [P] Document RegistrationFailureLog entity from IdentityTenantManagementDatabase/Models/RegistrationFailureLog.cs
+- [X] T047 Add entity relationship diagram (ERD) showing all relationships (one-to-many, many-to-many) to data-model.md
+- [X] T048 Document tenant isolation boundaries (which entities are tenant-scoped vs global) in data-model.md
+- [X] T049 Document recommended indexes (TenantId, UserId, Email, etc.) for performance in data-model.md
+- [X] T050 Document validation rules per entity (required fields, string lengths, regex patterns) in data-model.md
+- [X] T051 Document state transitions (UserStatusType lifecycle: Active, Suspended, Deleted) in data-model.md
 
 ### API Contracts
 
-- [ ] T052 Create contracts directory in specs/master/contracts/
-- [ ] T053 [P] Generate onboarding-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/OnboardingController.cs
-- [ ] T054 [P] Generate tenants-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/TenantsController.cs
-- [ ] T055 [P] Generate users-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/UsersController.cs
-- [ ] T056 [P] Generate authentication-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/AuthenticationController.cs
-- [ ] T057 Apply API versioning strategy (v1 prefix) to all generated OpenAPI specs in contracts/
-- [ ] T058 Add request/response schemas with validation rules to all OpenAPI specs
-- [ ] T059 Add ErrorResponse model schema to all OpenAPI specs (from IdentityTenantManagement/Models/Responses/ErrorResponse.cs)
+- [X] T052 Create contracts directory in specs/master/contracts/
+- [X] T053 [P] Generate onboarding-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/OnboardingController.cs
+- [X] T054 [P] Generate tenants-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/TenantsController.cs
+- [X] T055 [P] Generate users-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/UsersController.cs
+- [X] T056 [P] Generate authentication-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/AuthenticationController.cs
+- [X] T057 Apply API versioning strategy (v1 prefix) to all generated OpenAPI specs in contracts/
+- [X] T058 Add request/response schemas with validation rules to all OpenAPI specs
+- [X] T059 Add ErrorResponse model schema to all OpenAPI specs (from IdentityTenantManagement/Models/Responses/ErrorResponse.cs)
 
 ### Developer Onboarding Guide
 
-- [ ] T060 Create quickstart.md file in specs/master/quickstart.md
-- [ ] T061 Document prerequisites (SQL Server, .NET 9 SDK, Keycloak setup) in quickstart.md
-- [ ] T062 Document clone and restore dependencies steps (dotnet restore) in quickstart.md
-- [ ] T063 Document appsettings.json configuration (connection strings, Keycloak config) in quickstart.md
-- [ ] T064 Document running migrations (dotnet ef database update --project IdentityTenantManagementDatabase) in quickstart.md
-- [ ] T065 Document starting Core API (dotnet run --project IdentityTenantManagement) in quickstart.md
-- [ ] T066 Document starting Blazor demo (dotnet run --project IdentityTenantManagement.BlazorApp) in quickstart.md
-- [ ] T067 Document testing onboarding workflow (create tenant + admin user via Blazor UI or API) in quickstart.md
-- [ ] T068 Document running tests (dotnet test) in quickstart.md
-- [ ] T069 Add debugging tips (common errors, logs to check) to quickstart.md
+- [X] T060 Create quickstart.md file in specs/master/quickstart.md
+- [X] T061 Document prerequisites (SQL Server, .NET 9 SDK, Keycloak setup) in quickstart.md
+- [X] T062 Document clone and restore dependencies steps (dotnet restore) in quickstart.md
+- [X] T063 Document appsettings.json configuration (connection strings, Keycloak config) in quickstart.md
+- [X] T064 Document running migrations (dotnet ef database update --project IdentityTenantManagementDatabase) in quickstart.md
+- [X] T065 Document starting Core API (dotnet run --project IdentityTenantManagement) in quickstart.md
+- [X] T066 Document starting Blazor demo (dotnet run --project IdentityTenantManagement.BlazorApp) in quickstart.md
+- [X] T067 Document testing onboarding workflow (create tenant + admin user via Blazor UI or API) in quickstart.md
+- [X] T068 Document running tests (dotnet test) in quickstart.md
+- [X] T069 Add debugging tips (common errors, logs to check) to quickstart.md
 
 ### Agent Context Update
 
-- [ ] T070 Run .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude to update agent context with tech stack (C# .NET 9.0, EF Core, Blazor Server, Moq, Saga pattern)
+- [X] T070 Run .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude to update agent context with tech stack (C# .NET 9.0, EF Core, Blazor Server, Moq, Saga pattern)
 
 **Checkpoint**: data-model.md, contracts/ (4 YAML files), quickstart.md, and agent context complete
 

@@ -1,0 +1,462 @@
+openapi: 3.0.3
+info:
+  title: Identity Tenant Management - Users API
+  description: |
+    API endpoints for user management including creation, updates, deletion,
+    and retrieval operations. Enforces tenant isolation for multi-tenant security.
+  version: 1.0.0
+  contact:
+    name: Identity Tenant Management Team
+
+servers:
+  - url: /api/v1
+    description: Production API v1
+
+tags:
+  - name: Users
+    description: User management operations
+
+paths:
+  /Users/organization/{organizationId}:
+    get:
+      tags:
+        - Users
+      summary: Get all users in an organization
+      description: |
+        Retrieves all users associated with a specific organization from Keycloak.
+
+        **Security Vulnerability**: This endpoint lacks authorization and allows cross-tenant
+        data access. Any authenticated user can query users from any organization.
+        **CRITICAL**: Must add authorization before production deployment.
+      operationId: getOrganizationUsers
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: Keycloak organization UUID
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  description: User information from Keycloak
+        '404':
+          description: Organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Users/Create:
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      description: |
+        Creates a new user, optionally associating them with an organization.
+        Uses saga pattern for consistency between local database and Keycloak.
+
+        **Security Note**: This endpoint currently lacks authorization. Should require
+        appropriate permissions based on whether organizationId is provided.
+      operationId: createUser
+      parameters:
+        - name: organizationId
+          in: query
+          required: false
+          description: Optional Keycloak organization UUID to associate user with
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserModel'
+            examples:
+              validUser:
+                summary: Valid user creation
+                value:
+                  userName: "jsmith"
+                  firstName: "John"
+                  lastName: "Smith"
+                  email: "john.smith@example.com"
+                  password: "SecureP@ssw0rd!"
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User created successfully"
+                  emailAddress:
+                    type: string
+                    format: email
+                    example: "john.smith@example.com"
+                  userId:
+                    type: string
+                    format: uuid
+                    example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        '400':
+          description: Invalid request data or duplicate email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error during user creation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Users/GetUserByEmail:
+    post:
+      tags:
+        - Users
+      summary: Retrieve user by email address
+      description: |
+        Queries Keycloak to find a user by their email address.
+
+        **Security Note**: This endpoint currently lacks authorization.
+      operationId: getUserByEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+              format: email
+              example: "john.smith@example.com"
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User Found"
+                  emailAddress:
+                    type: string
+                    format: email
+                    example: "john.smith@example.com"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Users/{userId}:
+    put:
+      tags:
+        - Users
+      summary: Update user information
+      description: |
+        Updates a user's profile information (first name, last name).
+        Enforces tenant isolation by validating tenant_id claim from JWT.
+
+        **Security Note**: This endpoint lacks authorization attribute but does validate
+        tenant context from token claims.
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Keycloak user UUID
+          schema:
+            type: string
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditUserModel'
+            examples:
+              validUpdate:
+                summary: Valid user update
+                value:
+                  firstName: "Jonathan"
+                  lastName: "Smith-Jones"
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User updated successfully"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Tenant context not found in JWT
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Tenant context not found"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+
+    delete:
+      tags:
+        - Users
+      summary: Delete a user from the tenant
+      description: |
+        Deletes a user from the calling user's tenant organization.
+        Enforces permission-based authorization via RequirePermission attribute.
+
+        **Required Permission**: delete-users
+        **Tenant Isolation**: Validates tenant_id and user_id from JWT claims
+      operationId: deleteUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Keycloak user UUID to delete
+          schema:
+            type: string
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User deleted successfully"
+        '400':
+          description: Invalid operation (e.g., cannot delete self)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Users cannot delete themselves"
+        '401':
+          description: User identity or tenant context not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User identity or tenant context not found"
+        '403':
+          description: Insufficient permissions (lacks delete-users permission)
+        '500':
+          description: Internal server error (WARNING - may leak stack trace)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Failed to delete user"
+                  error:
+                    type: string
+                    description: Exception message (SECURITY ISSUE - may contain sensitive data)
+      security:
+        - bearerAuth: []
+
+  /Users/events/recent-registrations:
+    get:
+      tags:
+        - Users
+      summary: Get recent user registration events
+      description: |
+        Retrieves recent registration events from Keycloak event log.
+
+        **Security Vulnerability**: This endpoint lacks authorization.
+        **Security Issue**: Error responses leak full stack traces (line 118 in controller).
+      operationId: getRecentRegistrations
+      responses:
+        '200':
+          description: Registration events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Recent registration events retrieved successfully"
+                  count:
+                    type: integer
+                    example: 15
+                  registrations:
+                    type: array
+                    items:
+                      type: object
+                      description: Keycloak event data
+        '500':
+          description: Internal server error (LEAKS STACK TRACE)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Failed to retrieve registration events"
+                  error:
+                    type: string
+                    description: Exception message
+                  stackTrace:
+                    type: string
+                    description: Full stack trace (CRITICAL SECURITY ISSUE)
+
+components:
+  schemas:
+    CreateUserModel:
+      type: object
+      required:
+        - userName
+        - firstName
+        - lastName
+        - email
+        - password
+      properties:
+        userName:
+          type: string
+          description: Unique username for authentication
+          minLength: 2
+          maxLength: 100
+          example: "jsmith"
+        firstName:
+          type: string
+          description: User's first name
+          minLength: 1
+          maxLength: 100
+          example: "John"
+        lastName:
+          type: string
+          description: User's last name
+          minLength: 1
+          maxLength: 100
+          example: "Smith"
+        email:
+          type: string
+          format: email
+          description: User's email address (must be unique across system)
+          minLength: 3
+          maxLength: 255
+          example: "john.smith@example.com"
+        password:
+          type: string
+          format: password
+          description: User's password
+          minLength: 8
+          maxLength: 100
+          example: "SecureP@ssw0rd!"
+
+    EditUserModel:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: User's updated first name
+          minLength: 1
+          maxLength: 100
+          example: "Jonathan"
+        lastName:
+          type: string
+          description: User's updated last name
+          minLength: 1
+          maxLength: 100
+          example: "Smith-Jones"
+      description: Model for updating user profile information
+
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: URI reference identifying the problem type
+          example: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        title:
+          type: string
+          description: Short, human-readable summary of the problem
+          example: "One or more validation errors occurred."
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+        traceId:
+          type: string
+          description: Unique identifier for this request (for debugging)
+        errors:
+          type: object
+          description: Dictionary of field-specific validation errors
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Keycloak authentication
+
+security: []
