@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using IdentityTenantManagement.Services;
 using KeycloakAdapter.Models;
 using KeycloakAdapter.Services;
@@ -7,7 +8,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace IdentityTenantManagement.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class AuthenticationController : ControllerBase
 {
     private readonly IKCAuthenticationService _authenticationService;

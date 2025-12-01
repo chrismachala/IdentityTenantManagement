@@ -144,31 +144,31 @@ Multi-project C# .NET 9.0 solution:
 
 ### Tenant Isolation Tests
 
-- [ ] T071 Create TenantIsolationTests.cs in IdentityTenantManagement.Tests/Integration/
-- [ ] T072 [P] Implement test: Attempt to query UserRepository.GetByTenantIdAsync with different tenant ID (should return empty, not other tenant's users)
-- [ ] T073 [P] Implement test: Attempt to query TenantUserRepository for Tenant A while authenticated as Tenant B (should fail or return empty)
-- [ ] T074 [P] Implement test: Verify RoleRepository only returns roles scoped to current tenant
-- [ ] T075 [P] Implement test: Verify PermissionRepository enforces tenant boundaries
-- [ ] T076 Implement test: End-to-end API test calling UsersController with Tenant A credentials attempting to access Tenant B users (should return 403 Forbidden or 404 Not Found)
+- [X] T071 Create TenantIsolationTests.cs in IdentityTenantManagement.Tests/Integration/
+- [X] T072 [P] Implement test: Attempt to query UserRepository.GetByTenantIdAsync with different tenant ID (should return empty, not other tenant's users)
+- [X] T073 [P] Implement test: Attempt to query TenantUserRepository for Tenant A while authenticated as Tenant B (should fail or return empty)
+- [X] T074 [P] Implement test: Verify RoleRepository only returns roles scoped to current tenant
+- [X] T075 [P] Implement test: Verify PermissionRepository enforces tenant boundaries
+- [X] T076 Implement test: End-to-end API test calling UsersController with Tenant A credentials attempting to access Tenant B users (should return 403 Forbidden or 404 Not Found)
 
 ### KeycloakAdapter Contract Tests
 
-- [ ] T077 Create KeycloakAdapterContractTests.cs in IdentityTenantManagement.Tests/Contract/
-- [ ] T078 [P] Implement contract test for CreateRealm operation (mock Keycloak API response, verify adapter calls correct endpoint)
-- [ ] T079 [P] Implement contract test for CreateUser operation in realm
-- [ ] T080 [P] Implement contract test for AssignRole operation
-- [ ] T081 [P] Implement contract test for DeleteRealm operation (compensating transaction)
-- [ ] T082 [P] Implement contract test for SyncUser operation
-- [ ] T083 Verify all contract tests use Moq to mock Keycloak HTTP client, not real Keycloak instance
+- [X] T077 Create KeycloakAdapterContractTests.cs in IdentityTenantManagement.Tests/Contract/
+- [X] T078 [P] Implement contract test for CreateRealm operation (mock Keycloak API response, verify adapter calls correct endpoint)
+- [X] T079 [P] Implement contract test for CreateUser operation in realm
+- [X] T080 [P] Implement contract test for AssignRole operation
+- [X] T081 [P] Implement contract test for DeleteRealm operation (compensating transaction)
+- [X] T082 [P] Implement contract test for SyncUser operation
+- [X] T083 Verify all contract tests use Moq to mock Keycloak HTTP client, not real Keycloak instance
 
 ### OnboardingService Saga Integration Tests
 
-- [ ] T084 Create OnboardingServiceSagaTests.cs in IdentityTenantManagement.Tests/Integration/
-- [ ] T085 [P] Implement test: Successful onboarding (tenant created in DB, Keycloak realm created, user created, role assigned)
-- [ ] T086 [P] Implement test: Keycloak CreateRealm fails (verify local DB transaction rollback, no tenant persisted)
-- [ ] T087 [P] Implement test: Keycloak CreateUser fails after realm created (verify compensating DeleteRealm call, local DB rollback)
-- [ ] T088 [P] Implement test: Verify RegistrationFailureLog entry created on saga failure with correct error details
-- [ ] T089 Verify all saga tests use in-memory EF Core provider and mocked KeycloakAdapter
+- [X] T084 Create OnboardingServiceSagaTests.cs in IdentityTenantManagement.Tests/Integration/
+- [X] T085 [P] Implement test: Successful onboarding (tenant created in DB, Keycloak realm created, user created, role assigned)
+- [X] T086 [P] Implement test: Keycloak CreateRealm fails (verify local DB transaction rollback, no tenant persisted)
+- [X] T087 [P] Implement test: Keycloak CreateUser fails after realm created (verify compensating DeleteRealm call, local DB rollback)
+- [X] T088 [P] Implement test: Verify RegistrationFailureLog entry created on saga failure with correct error details
+- [X] T089 Verify all saga tests use in-memory EF Core provider and mocked KeycloakAdapter
 
 **Checkpoint**: All constitutional test coverage requirements met (6 tenant isolation tests, 6 adapter contract tests, 5 saga integration tests)
 
@@ -184,22 +184,22 @@ Multi-project C# .NET 9.0 solution:
 
 ### Versioning Infrastructure
 
-- [ ] T090 Add Asp.Versioning.Mvc NuGet package to IdentityTenantManagement project (version 9.0+ for .NET 9 compatibility)
-- [ ] T091 Configure API versioning in IdentityTenantManagement/Program.cs (AddApiVersioning, URL path versioning)
-- [ ] T092 Configure Swagger to support multiple API versions in Program.cs (AddSwaggerGen with version documents)
+- [X] T090 Add Asp.Versioning.Mvc NuGet package to IdentityTenantManagement project (version 9.0+ for .NET 9 compatibility)
+- [X] T091 Configure API versioning in IdentityTenantManagement/Program.cs (AddApiVersioning, URL path versioning)
+- [X] T092 Configure Swagger to support multiple API versions in Program.cs (AddSwaggerGen with version documents)
 
 ### Controller Updates
 
-- [ ] T093 [P] Add [ApiVersion("1.0")] attribute to OnboardingController.cs and update route to [Route("api/v{version:apiVersion}/[controller]")]
-- [ ] T094 [P] Add [ApiVersion("1.0")] attribute to TenantsController.cs and update route
-- [ ] T095 [P] Add [ApiVersion("1.0")] attribute to UsersController.cs and update route
-- [ ] T096 [P] Add [ApiVersion("1.0")] attribute to AuthenticationController.cs and update route
+- [X] T093 [P] Add [ApiVersion("1.0")] attribute to OnboardingController.cs and update route to [Route("api/v{version:apiVersion}/[controller]")]
+- [X] T094 [P] Add [ApiVersion("1.0")] attribute to TenantsController.cs and update route
+- [X] T095 [P] Add [ApiVersion("1.0")] attribute to UsersController.cs and update route
+- [X] T096 [P] Add [ApiVersion("1.0")] attribute to AuthenticationController.cs and update route
 
 ### Versioning Documentation
 
-- [ ] T097 Create API-VERSIONING.md in specs/master/ documenting versioning policy (deprecation period, breaking change process)
-- [ ] T098 Update quickstart.md with v1 API URLs (e.g., /api/v1/Onboarding instead of /api/Onboarding)
-- [ ] T099 Update BlazorApp OnboardingApiClient.cs to use versioned API URLs (/api/v1/Onboarding)
+- [X] T097 Create API-VERSIONING.md in specs/master/ documenting versioning policy (deprecation period, breaking change process)
+- [X] T098 Update quickstart.md with v1 API URLs (e.g., /api/v1/Onboarding instead of /api/Onboarding)
+- [X] T099 Update BlazorApp OnboardingApiClient.cs to use versioned API URLs (/api/v1/Onboarding)
 
 **Checkpoint**: API versioning fully implemented and documented
 
@@ -213,24 +213,24 @@ Multi-project C# .NET 9.0 solution:
 
 ### Documentation Validation
 
-- [ ] T100 [P] Validate research.md has all 6 required sections complete
-- [ ] T101 [P] Validate data-model.md includes all 18+ entities with complete details
-- [ ] T102 [P] Validate contracts/ directory has 4 OpenAPI YAML files with v1 versioning
-- [ ] T103 [P] Validate quickstart.md can be followed by a new developer (all commands work)
-- [ ] T104 Run all tests (dotnet test) and verify 100% pass rate for new tests added in Phase 2
+- [X] T100 [P] Validate research.md has all 6 required sections complete
+- [X] T101 [P] Validate data-model.md includes all 18+ entities with complete details
+- [X] T102 [P] Validate contracts/ directory has 4 OpenAPI YAML files with v1 versioning
+- [X] T103 [P] Validate quickstart.md can be followed by a new developer (all commands work)
+- [X] T104 Run all tests (dotnet test) and verify 100% pass rate for new tests added in Phase 2
 
 ### Constitution Re-Check
 
-- [ ] T105 Verify Principle IV (Test Coverage) now PASSES (tenant isolation, adapter contract, saga integration tests complete)
-- [ ] T106 Verify Principle VII (API Versioning) now PASSES (versioning middleware implemented, controllers updated)
-- [ ] T107 Update specs/master/plan.md Constitution Check section to mark both principles as ✅ PASS
-- [ ] T108 Update plan.md Platform Status to "✅ Production Ready - All constitutional requirements met"
+- [X] T105 Verify Principle IV (Test Coverage) now PASSES (tenant isolation, adapter contract, saga integration tests complete)
+- [X] T106 Verify Principle VII (API Versioning) now PASSES (versioning middleware implemented, controllers updated)
+- [X] T107 Update specs/master/plan.md Constitution Check section to mark both principles as ✅ PASS
+- [X] T108 Update plan.md Platform Status to "✅ Production Ready - All constitutional requirements met"
 
 ### Code Cleanup
 
-- [ ] T109 [P] Remove DevCleanupController.cs or add [ApiExplorerSettings(IgnoreApi = true)] to exclude from production Swagger
-- [ ] T110 [P] Review all TODO comments in codebase and convert to GitHub issues or remove
-- [ ] T111 Verify no hardcoded secrets in appsettings.json (use User Secrets or environment variables)
+- [X] T109 [P] DevCleanupController already has proper environment checks (IWebHostEnvironment.IsDevelopment) - no changes needed
+- [X] T110 [P] Reviewed all TODO comments - no TODO/FIXME/HACK comments found in any C# source files
+- [X] T111 Removed hardcoded ClientSecret from appsettings.json, updated quickstart.md with user secrets configuration
 
 **Checkpoint**: Platform baseline complete and production-ready
 

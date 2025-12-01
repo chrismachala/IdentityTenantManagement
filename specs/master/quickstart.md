@@ -168,7 +168,7 @@ Update `appsettings.json` with your connection details:
 
 ### 2. Configure appsettings.json
 
-Edit `IdentityTenantManagement/appsettings.json`:
+The `IdentityTenantManagement/appsettings.json` file contains configuration templates:
 
 ```json
 {
@@ -176,27 +176,28 @@ Edit `IdentityTenantManagement/appsettings.json`:
     "BaseUrl": "http://localhost:8080",
     "Realm": "Organisations",
     "ClientId": "IdentityTenantManagement",
-    "ClientSecret": "YOUR_CLIENT_SECRET_FROM_KEYCLOAK",  // ⚠️ UPDATE THIS
+    "ClientSecret": "", // SECURITY: Configure via User Secrets
     "TokenEndpoint": "/realms/{realm}/protocol/openid-connect/token"
   },
   "ConnectionStrings": {
     "OnboardingDatabase": "Server=localhost\\SQLEXPRESS;Database=IdentityTenantManagement;Trusted_Connection=True;Encrypt=False;"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*"
+  }
 }
 ```
 
-**⚠️ Security Warning**: Never commit real client secrets to version control. Use User Secrets for development:
+**⚠️ REQUIRED: Configure Keycloak Client Secret via User Secrets**
+
+For security, the ClientSecret is NOT stored in appsettings.json. You MUST configure it using User Secrets:
 
 ```bash
 cd IdentityTenantManagement
-dotnet user-secrets set "KeycloakConfig:ClientSecret" "YOUR_CLIENT_SECRET"
+dotnet user-secrets set "KeycloakConfig:ClientSecret" "YOUR_CLIENT_SECRET_FROM_KEYCLOAK"
+```
+
+To verify your user secret was set:
+
+```bash
+dotnet user-secrets list
 ```
 
 ---
@@ -278,9 +279,9 @@ info: Microsoft.Hosting.Lifetime[14]
 
 **Test API Health**:
 ```bash
-curl http://localhost:5000/api/Tenants/Create -X POST \
+curl http://localhost:5000/api/v1/Tenants/Create -X POST \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test Org","domain":"test-org"}'
+  -d '{"name":"TestOrg","domain":"test-org"}'
 ```
 
 ### 2. Start the Blazor App (Optional)
@@ -324,11 +325,11 @@ The onboarding workflow creates a new tenant and its initial administrator user 
 ### Using cURL (API Direct)
 
 ```bash
-curl -X POST http://localhost:5000/api/Onboarding/OnboardOrganisation \
+curl -X POST http://localhost:5000/api/v1/Onboarding/OnboardOrganisation \
   -H "Content-Type: application/json" \
   -d '{
     "createTenantModel": {
-      "name": "Acme Corporation",
+      "name": "AcmeCorporation",
       "domain": "acme-corp"
     },
     "createUserModel": {

@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using IdentityTenantManagement.Models.Organisations;
 using IdentityTenantManagement.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,8 @@ using KeycloakAdapter.Services;
 namespace IdentityTenantManagement.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class TenantsController : ControllerBase
 {
     private readonly ITenantOrchestrationService _tenantOrchestrationService;

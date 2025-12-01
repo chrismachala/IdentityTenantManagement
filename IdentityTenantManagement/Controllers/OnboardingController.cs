@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using IdentityTenantManagement.Models.Onboarding;
 using IdentityTenantManagement.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -5,7 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace IdentityTenantManagement.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class OnboardingController : ControllerBase
 {
     private readonly IOnboardingService _onboardingService;

@@ -346,7 +346,7 @@
                 return;
             }
 
-            var response = await Http.GetAsync($"api/Users/organization/{organizationId}");
+            var response = await Http.GetAsync($"api/v1.0/Users/organization/{organizationId}");
 
             if (response.IsSuccessStatusCode)
             {
@@ -407,7 +407,7 @@
                 Email = editEmail
             };
 
-            var response = await Http.PutAsJsonAsync($"api/Users/{selectedUser.Id}", updateModel);
+            var response = await Http.PutAsJsonAsync($"api/v1.0/Users/{selectedUser.Id}", updateModel);
 
             if (response.IsSuccessStatusCode)
             {
@@ -452,7 +452,7 @@
             isDeleting = true;
             modalErrorMessage = null;
 
-            var response = await Http.DeleteAsync($"api/Users/{selectedUser.Id}");
+            var response = await Http.DeleteAsync($"api/v1.0/Users/{selectedUser.Id}");
 
             if (response.IsSuccessStatusCode)
             {
@@ -519,7 +519,7 @@
                 Email = inviteEmail
             };
 
-            var response = await Http.PostAsJsonAsync("api/Tenants/InviteUser", inviteModel);
+            var response = await Http.PostAsJsonAsync("api/v1.0/Tenants/InviteUser", inviteModel);
 
             if (response.IsSuccessStatusCode)
             {

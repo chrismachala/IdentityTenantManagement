@@ -11,7 +11,35 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// Add API versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new Asp.Versioning.UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'V";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Identity Tenant Management API",
+        Version = "v1",
+        Description = "B2B SaaS multi-tenant identity and access management platform. " +
+                      "Supports tenant onboarding, user management, role-based permissions, and identity provider integration.",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "Identity Tenant Management Team"
+        }
+    });
+});
 
 // Add rate limiting
 builder.Services.AddRateLimiter(options =>
