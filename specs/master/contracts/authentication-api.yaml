@@ -1,0 +1,288 @@
+openapi: 3.0.3
+info:
+  title: Identity Tenant Management - Authentication API
+  description: |
+    API endpoints for user authentication and permission retrieval.
+    Integrates with Keycloak for token-based authentication.
+  version: 1.0.0
+  contact:
+    name: Identity Tenant Management Team
+
+servers:
+  - url: /api/v1
+    description: Production API v1
+
+tags:
+  - name: Authentication
+    description: Authentication and authorization operations
+
+paths:
+  /Authentication/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user and obtain JWT tokens
+      description: |
+        Authenticates a user against Keycloak and returns access/refresh tokens.
+        Requires organization (tenant) identifier in addition to username and password.
+
+        **Rate Limited**: This endpoint has rate limiting enabled to prevent brute-force attacks.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginModel'
+            examples:
+              validLogin:
+                summary: Valid login request
+                value:
+                  organization: "acme-corp"
+                  username: "jsmith"
+                  password: "SecureP@ssw0rd!"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationResponse'
+              examples:
+                successfulAuth:
+                  summary: Successful authentication
+                  value:
+                    success: true
+                    accessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI..."
+                    refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI..."
+                    expiresIn: 3600
+                    userInfo:
+                      userId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                      username: "jsmith"
+                      email: "john.smith@example.com"
+                      firstName: "John"
+                      lastName: "Smith"
+                      organization: "acme-corp"
+                      organizationId: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          description: Invalid request data (validation errors)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Validation error
+                  value:
+                    type: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                    title: "One or more validation errors occurred."
+                    status: 400
+                    errors:
+                      Organization:
+                        - "Organization is required"
+        '401':
+          description: Authentication failed (invalid credentials)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationResponse'
+              examples:
+                failedAuth:
+                  summary: Failed authentication
+                  value:
+                    success: false
+                    errorMessage: "Invalid credentials"
+        '429':
+          description: Too many login attempts (rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Authentication/permissions/{keycloakUserId}/{keycloakOrgId}:
+    get:
+      tags:
+        - Authentication
+      summary: Get user permissions by external IDs
+      description: |
+        Retrieves all permissions for a user within a specific organization using
+        Keycloak external identifiers. Returns both role-based and direct permissions.
+
+        **Security Note**: This endpoint currently lacks authorization. Any client with
+        Keycloak user/org IDs can query permissions.
+      operationId: getUserPermissions
+      parameters:
+        - name: keycloakUserId
+          in: path
+          required: true
+          description: Keycloak user UUID
+          schema:
+            type: string
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        - name: keycloakOrgId
+          in: path
+          required: true
+          description: Keycloak organization UUID
+          schema:
+            type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: Permission code
+                example:
+                  - "invite-users"
+                  - "view-users"
+                  - "edit-users"
+                  - "delete-users"
+        '404':
+          description: User or organization not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    LoginModel:
+      type: object
+      required:
+        - organization
+        - username
+        - password
+      properties:
+        organization:
+          type: string
+          description: Tenant organization identifier (domain)
+          minLength: 2
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9-_]+$'
+          example: "acme-corp"
+        username:
+          type: string
+          description: User's username
+          minLength: 2
+          maxLength: 100
+          example: "jsmith"
+        password:
+          type: string
+          format: password
+          description: User's password
+          minLength: 1
+          maxLength: 1000
+          example: "SecureP@ssw0rd!"
+
+    AuthenticationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates whether authentication was successful
+          example: true
+        accessToken:
+          type: string
+          description: JWT access token (only present on success)
+          example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          description: JWT refresh token for obtaining new access tokens (only present on success)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        expiresIn:
+          type: integer
+          description: Access token validity period in seconds (only present on success)
+          example: 3600
+        errorMessage:
+          type: string
+          description: Error message (only present on failure)
+          example: "Invalid credentials"
+        userInfo:
+          $ref: '#/components/schemas/UserInfo'
+
+    UserInfo:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: Keycloak user UUID
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        username:
+          type: string
+          description: User's username
+          example: "jsmith"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "john.smith@example.com"
+        firstName:
+          type: string
+          description: User's first name
+          example: "John"
+        lastName:
+          type: string
+          description: User's last name
+          example: "Smith"
+        organization:
+          type: string
+          description: Tenant organization identifier
+          example: "acme-corp"
+        organizationId:
+          type: string
+          description: Keycloak organization UUID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: URI reference identifying the problem type
+          example: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        title:
+          type: string
+          description: Short, human-readable summary of the problem
+          example: "One or more validation errors occurred."
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+        traceId:
+          type: string
+          description: Unique identifier for this request (for debugging)
+        errors:
+          type: object
+          description: Dictionary of field-specific validation errors
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Keycloak authentication
+
+security: []

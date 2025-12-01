@@ -17,7 +17,7 @@ public class OnboardingApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/Onboarding/OnboardOrganisation", model);
+            var response = await _httpClient.PostAsJsonAsync("api/v1.0/Onboarding/OnboardOrganisation", model);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)

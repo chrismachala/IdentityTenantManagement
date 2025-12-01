@@ -1,0 +1,201 @@
+openapi: 3.0.3
+info:
+  title: Identity Tenant Management - Onboarding API
+  description: |
+    API endpoints for onboarding new tenants and their initial users.
+    Implements saga pattern for distributed transactions with Keycloak.
+  version: 1.0.0
+  contact:
+    name: Identity Tenant Management Team
+
+servers:
+  - url: /api/v1
+    description: Production API v1
+
+tags:
+  - name: Onboarding
+    description: Tenant and user onboarding operations
+
+paths:
+  /Onboarding/OnboardOrganisation:
+    post:
+      tags:
+        - Onboarding
+      summary: Onboard a new organization with initial user
+      description: |
+        Creates a new tenant and its initial administrator user in a single atomic operation.
+        Uses saga pattern to ensure consistency between local database and Keycloak.
+
+        **Security Note**: This endpoint currently lacks authorization. Should be protected in production.
+      operationId: onboardOrganisation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantUserOnboardingModel'
+            examples:
+              validOnboarding:
+                summary: Valid onboarding request
+                value:
+                  createTenantModel:
+                    name: "Acme Corporation"
+                    domain: "acme-corp"
+                  createUserModel:
+                    userName: "admin"
+                    firstName: "John"
+                    lastName: "Doe"
+                    email: "john.doe@acme.com"
+                    password: "SecureP@ssw0rd!"
+      responses:
+        '200':
+          description: Organization onboarded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Client Onboarded successfully"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  summary: Validation error
+                  value:
+                    type: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                    title: "One or more validation errors occurred."
+                    status: 400
+                    errors:
+                      CreateTenantModel.Name:
+                        - "The Name field is required."
+        '500':
+          description: Internal server error during onboarding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    TenantUserOnboardingModel:
+      type: object
+      required:
+        - createTenantModel
+        - createUserModel
+      properties:
+        createTenantModel:
+          $ref: '#/components/schemas/CreateTenantModel'
+        createUserModel:
+          $ref: '#/components/schemas/CreateUserModel'
+      description: Combined model for tenant and user onboarding
+
+    CreateTenantModel:
+      type: object
+      required:
+        - name
+        - domain
+      properties:
+        name:
+          type: string
+          description: Display name of the tenant organization
+          minLength: 1
+          maxLength: 200
+          example: "Acme Corporation"
+        domain:
+          type: string
+          description: Unique domain identifier for the tenant (URL-safe)
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-z0-9-]+$'
+          example: "acme-corp"
+
+    CreateUserModel:
+      type: object
+      required:
+        - userName
+        - firstName
+        - lastName
+        - email
+        - password
+      properties:
+        userName:
+          type: string
+          description: Unique username for authentication
+          minLength: 2
+          maxLength: 100
+          example: "admin"
+        firstName:
+          type: string
+          description: User's first name
+          minLength: 1
+          maxLength: 100
+          example: "John"
+        lastName:
+          type: string
+          description: User's last name
+          minLength: 1
+          maxLength: 100
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          description: User's email address (must be unique across system)
+          minLength: 3
+          maxLength: 255
+          example: "john.doe@acme.com"
+        password:
+          type: string
+          format: password
+          description: User's initial password
+          minLength: 8
+          maxLength: 100
+          example: "SecureP@ssw0rd!"
+
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: URI reference identifying the problem type
+          example: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        title:
+          type: string
+          description: Short, human-readable summary of the problem
+          example: "One or more validation errors occurred."
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+          example: "The request body contains invalid data."
+        traceId:
+          type: string
+          description: Unique identifier for this request (for debugging)
+          example: "0HMVFE0A2LQMC:00000001"
+        errors:
+          type: object
+          description: Dictionary of field-specific validation errors
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            CreateTenantModel.Name:
+              - "The Name field is required."
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Keycloak authentication
+
+security: []

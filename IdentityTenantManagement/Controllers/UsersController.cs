@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using IdentityTenantManagement.Authorization;
 using IdentityTenantManagement.Services;
 using KeycloakAdapter.Models;
@@ -8,7 +9,8 @@ namespace IdentityTenantManagement.Controllers;
 
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class UsersController : ControllerBase
 {
     private readonly IUserOrchestrationService _userOrchestrationService;

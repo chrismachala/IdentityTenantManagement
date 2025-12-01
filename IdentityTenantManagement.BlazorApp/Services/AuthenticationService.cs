@@ -23,7 +23,7 @@ public class AuthenticationService : IDisposable
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/Authentication/login", loginModel);
+            var response = await _httpClient.PostAsJsonAsync("api/v1.0/Authentication/login", loginModel);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -45,7 +45,7 @@ public class AuthenticationService : IDisposable
                     try
                     {
                         var permissionsResponse = await _httpClient.GetAsync(
-                            $"api/Authentication/permissions/{authResponse.UserInfo.UserId}/{authResponse.UserInfo.OrganizationId}"
+                            $"api/v1.0/Authentication/permissions/{authResponse.UserInfo.UserId}/{authResponse.UserInfo.OrganizationId}"
                         );
 
                         if (permissionsResponse.IsSuccessStatusCode)

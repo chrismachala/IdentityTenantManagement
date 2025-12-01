@@ -1,0 +1,363 @@
+openapi: 3.0.3
+info:
+  title: Identity Tenant Management - Tenants API
+  description: |
+    API endpoints for managing tenant organizations, including creation, domain management,
+    and user invitations.
+  version: 1.0.0
+  contact:
+    name: Identity Tenant Management Team
+
+servers:
+  - url: /api/v1
+    description: Production API v1
+
+tags:
+  - name: Tenants
+    description: Tenant organization management operations
+
+paths:
+  /Tenants/Create:
+    post:
+      tags:
+        - Tenants
+      summary: Create a new tenant organization
+      description: |
+        Creates a new tenant organization without an initial user.
+
+        **Security Note**: This endpoint currently lacks authorization. Should require
+        system administrator role in production.
+      operationId: createTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantModel'
+            examples:
+              validTenant:
+                summary: Valid tenant creation
+                value:
+                  name: "Beta Industries"
+                  domain: "beta-industries"
+      responses:
+        '200':
+          description: Tenant created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Organisation created successfully"
+                  tenantName:
+                    type: string
+                    example: "Beta Industries"
+                  tenantId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Tenants/GetTenantByDomain:
+    post:
+      tags:
+        - Tenants
+      summary: Retrieve tenant by domain identifier
+      description: |
+        Queries Keycloak to retrieve organization information by domain.
+
+        **Security Note**: This endpoint currently lacks authorization.
+      operationId: getTenantByDomain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+              example: "acme-corp"
+      responses:
+        '200':
+          description: Tenant found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Organisation created successfully"
+                  tenantName:
+                    type: string
+                    example: "acme-corp"
+        '404':
+          description: Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Tenants/InviteExistingUser:
+    post:
+      tags:
+        - Tenants
+      summary: Add existing user to a tenant
+      description: |
+        Associates an existing user with a tenant organization in Keycloak.
+
+        **Security Note**: This endpoint currently lacks authorization. Should require
+        tenant administrator role.
+      operationId: inviteExistingUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserTenantModel'
+            examples:
+              validInvitation:
+                summary: Valid user-tenant association
+                value:
+                  userId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  tenantId: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: User added to organization successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User successfully added to Organisation"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User or tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Tenants/AddDomainToOrganisation:
+    post:
+      tags:
+        - Tenants
+      summary: Add a domain to a tenant organization
+      description: |
+        Adds a verified domain to a tenant for domain-based user provisioning.
+
+        **Status**: Not implemented (throws NotImplementedException)
+      operationId: addDomainToOrganisation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantDomainModel'
+      responses:
+        '501':
+          description: Not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Tenants/InviteUser:
+    post:
+      tags:
+        - Tenants
+      summary: Invite a new user to the tenant
+      description: |
+        Creates a new user and associates them with the tenant in a single operation.
+        Uses saga pattern for consistency.
+
+        **Security Note**: This endpoint currently lacks authorization. Should require
+        tenant administrator or manager role with 'invite-users' permission.
+      operationId: inviteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteUserModel'
+            examples:
+              validInvite:
+                summary: Valid user invitation
+                value:
+                  tenantId: "550e8400-e29b-41d4-a716-446655440000"
+                  email: "jane.smith@example.com"
+                  firstName: "Jane"
+                  lastName: "Smith"
+      responses:
+        '200':
+          description: User invitation sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User invitation sent successfully"
+                  userId:
+                    type: string
+                    format: uuid
+                    example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error during invitation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CreateTenantModel:
+      type: object
+      required:
+        - name
+        - domain
+      properties:
+        name:
+          type: string
+          description: Display name of the tenant organization
+          minLength: 1
+          maxLength: 200
+          example: "Beta Industries"
+        domain:
+          type: string
+          description: Unique domain identifier for the tenant (URL-safe)
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-z0-9-]+$'
+          example: "beta-industries"
+
+    UserTenantModel:
+      type: object
+      required:
+        - userId
+        - tenantId
+      properties:
+        userId:
+          type: string
+          description: Keycloak user UUID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        tenantId:
+          type: string
+          description: Keycloak organization UUID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    InviteUserModel:
+      type: object
+      required:
+        - tenantId
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+          description: UUID of the tenant organization
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          description: Email address for the new user (optional)
+          example: "jane.smith@example.com"
+        firstName:
+          type: string
+          description: User's first name (optional)
+          minLength: 1
+          maxLength: 100
+          example: "Jane"
+        lastName:
+          type: string
+          description: User's last name (optional)
+          minLength: 1
+          maxLength: 100
+          example: "Smith"
+
+    TenantDomainModel:
+      type: object
+      description: Model for adding a verified domain to a tenant (not implemented)
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+          description: UUID of the tenant organization
+        domain:
+          type: string
+          description: Domain name to add
+          example: "example.com"
+
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: URI reference identifying the problem type
+          example: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        title:
+          type: string
+          description: Short, human-readable summary of the problem
+          example: "One or more validation errors occurred."
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+        traceId:
+          type: string
+          description: Unique identifier for this request (for debugging)
+        errors:
+          type: object
+          description: Dictionary of field-specific validation errors
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Keycloak authentication
+
+security: []

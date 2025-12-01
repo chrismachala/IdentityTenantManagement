@@ -77,58 +77,58 @@ Multi-project C# .NET 9.0 solution:
 
 ### Data Model Documentation
 
-- [ ] T028 Create data-model.md file in specs/master/data-model.md
-- [ ] T029 Document Tenant entity (fields, types, nullability, relationships) from IdentityTenantManagementDatabase/Models/Tenant.cs
-- [ ] T030 [P] Document TenantDomain entity from IdentityTenantManagementDatabase/Models/TenantDomain.cs
-- [ ] T031 [P] Document TenantUser entity (tenant-user relationship) from IdentityTenantManagementDatabase/Models/TenantUser.cs
-- [ ] T032 [P] Document TenantUserRole entity from IdentityTenantManagementDatabase/Models/TenantUserRole.cs
-- [ ] T033 [P] Document TenantUserProfile entity from IdentityTenantManagementDatabase/Models/TenantUserProfile.cs
-- [ ] T034 [P] Document User entity (global user) from IdentityTenantManagementDatabase/Models/User.cs
-- [ ] T035 [P] Document UserProfile entity from IdentityTenantManagementDatabase/Models/UserProfile.cs
-- [ ] T036 [P] Document UserStatusType entity from IdentityTenantManagementDatabase/Models/UserStatusType.cs
-- [ ] T037 [P] Document Role entity from IdentityTenantManagementDatabase/Models/Role.cs
-- [ ] T038 [P] Document RolePermission entity from IdentityTenantManagementDatabase/Models/RolePermission.cs
-- [ ] T039 [P] Document Permission entity from IdentityTenantManagementDatabase/Models/Permission.cs
-- [ ] T040 [P] Document PermissionGroup entity from IdentityTenantManagementDatabase/Models/PermissionGroup.cs
-- [ ] T041 [P] Document UserPermission entity from IdentityTenantManagementDatabase/Models/UserPermission.cs
-- [ ] T042 [P] Document IdentityProvider entity from IdentityTenantManagementDatabase/Models/IdentityProvider.cs
-- [ ] T043 [P] Document ExternalIdentity entity from IdentityTenantManagementDatabase/Models/ExternalIdentity.cs
-- [ ] T044 [P] Document ExternalIdentityEntityType entity from IdentityTenantManagementDatabase/Models/ExternalIdentityEntityType.cs
-- [ ] T045 [P] Document GlobalSettings entity from IdentityTenantManagementDatabase/Models/GlobalSettings.cs
-- [ ] T046 [P] Document RegistrationFailureLog entity from IdentityTenantManagementDatabase/Models/RegistrationFailureLog.cs
-- [ ] T047 Add entity relationship diagram (ERD) showing all relationships (one-to-many, many-to-many) to data-model.md
-- [ ] T048 Document tenant isolation boundaries (which entities are tenant-scoped vs global) in data-model.md
-- [ ] T049 Document recommended indexes (TenantId, UserId, Email, etc.) for performance in data-model.md
-- [ ] T050 Document validation rules per entity (required fields, string lengths, regex patterns) in data-model.md
-- [ ] T051 Document state transitions (UserStatusType lifecycle: Active, Suspended, Deleted) in data-model.md
+- [X] T028 Create data-model.md file in specs/master/data-model.md
+- [X] T029 Document Tenant entity (fields, types, nullability, relationships) from IdentityTenantManagementDatabase/Models/Tenant.cs
+- [X] T030 [P] Document TenantDomain entity from IdentityTenantManagementDatabase/Models/TenantDomain.cs
+- [X] T031 [P] Document TenantUser entity (tenant-user relationship) from IdentityTenantManagementDatabase/Models/TenantUser.cs
+- [X] T032 [P] Document TenantUserRole entity from IdentityTenantManagementDatabase/Models/TenantUserRole.cs
+- [X] T033 [P] Document TenantUserProfile entity from IdentityTenantManagementDatabase/Models/TenantUserProfile.cs
+- [X] T034 [P] Document User entity (global user) from IdentityTenantManagementDatabase/Models/User.cs
+- [X] T035 [P] Document UserProfile entity from IdentityTenantManagementDatabase/Models/UserProfile.cs
+- [X] T036 [P] Document UserStatusType entity from IdentityTenantManagementDatabase/Models/UserStatusType.cs
+- [X] T037 [P] Document Role entity from IdentityTenantManagementDatabase/Models/Role.cs
+- [X] T038 [P] Document RolePermission entity from IdentityTenantManagementDatabase/Models/RolePermission.cs
+- [X] T039 [P] Document Permission entity from IdentityTenantManagementDatabase/Models/Permission.cs
+- [X] T040 [P] Document PermissionGroup entity from IdentityTenantManagementDatabase/Models/PermissionGroup.cs
+- [X] T041 [P] Document UserPermission entity from IdentityTenantManagementDatabase/Models/UserPermission.cs
+- [X] T042 [P] Document IdentityProvider entity from IdentityTenantManagementDatabase/Models/IdentityProvider.cs
+- [X] T043 [P] Document ExternalIdentity entity from IdentityTenantManagementDatabase/Models/ExternalIdentity.cs
+- [X] T044 [P] Document ExternalIdentityEntityType entity from IdentityTenantManagementDatabase/Models/ExternalIdentityEntityType.cs
+- [X] T045 [P] Document GlobalSettings entity from IdentityTenantManagementDatabase/Models/GlobalSettings.cs
+- [X] T046 [P] Document RegistrationFailureLog entity from IdentityTenantManagementDatabase/Models/RegistrationFailureLog.cs
+- [X] T047 Add entity relationship diagram (ERD) showing all relationships (one-to-many, many-to-many) to data-model.md
+- [X] T048 Document tenant isolation boundaries (which entities are tenant-scoped vs global) in data-model.md
+- [X] T049 Document recommended indexes (TenantId, UserId, Email, etc.) for performance in data-model.md
+- [X] T050 Document validation rules per entity (required fields, string lengths, regex patterns) in data-model.md
+- [X] T051 Document state transitions (UserStatusType lifecycle: Active, Suspended, Deleted) in data-model.md
 
 ### API Contracts
 
-- [ ] T052 Create contracts directory in specs/master/contracts/
-- [ ] T053 [P] Generate onboarding-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/OnboardingController.cs
-- [ ] T054 [P] Generate tenants-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/TenantsController.cs
-- [ ] T055 [P] Generate users-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/UsersController.cs
-- [ ] T056 [P] Generate authentication-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/AuthenticationController.cs
-- [ ] T057 Apply API versioning strategy (v1 prefix) to all generated OpenAPI specs in contracts/
-- [ ] T058 Add request/response schemas with validation rules to all OpenAPI specs
-- [ ] T059 Add ErrorResponse model schema to all OpenAPI specs (from IdentityTenantManagement/Models/Responses/ErrorResponse.cs)
+- [X] T052 Create contracts directory in specs/master/contracts/
+- [X] T053 [P] Generate onboarding-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/OnboardingController.cs
+- [X] T054 [P] Generate tenants-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/TenantsController.cs
+- [X] T055 [P] Generate users-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/UsersController.cs
+- [X] T056 [P] Generate authentication-api.yaml OpenAPI spec by analyzing IdentityTenantManagement/Controllers/AuthenticationController.cs
+- [X] T057 Apply API versioning strategy (v1 prefix) to all generated OpenAPI specs in contracts/
+- [X] T058 Add request/response schemas with validation rules to all OpenAPI specs
+- [X] T059 Add ErrorResponse model schema to all OpenAPI specs (from IdentityTenantManagement/Models/Responses/ErrorResponse.cs)
 
 ### Developer Onboarding Guide
 
-- [ ] T060 Create quickstart.md file in specs/master/quickstart.md
-- [ ] T061 Document prerequisites (SQL Server, .NET 9 SDK, Keycloak setup) in quickstart.md
-- [ ] T062 Document clone and restore dependencies steps (dotnet restore) in quickstart.md
-- [ ] T063 Document appsettings.json configuration (connection strings, Keycloak config) in quickstart.md
-- [ ] T064 Document running migrations (dotnet ef database update --project IdentityTenantManagementDatabase) in quickstart.md
-- [ ] T065 Document starting Core API (dotnet run --project IdentityTenantManagement) in quickstart.md
-- [ ] T066 Document starting Blazor demo (dotnet run --project IdentityTenantManagement.BlazorApp) in quickstart.md
-- [ ] T067 Document testing onboarding workflow (create tenant + admin user via Blazor UI or API) in quickstart.md
-- [ ] T068 Document running tests (dotnet test) in quickstart.md
-- [ ] T069 Add debugging tips (common errors, logs to check) to quickstart.md
+- [X] T060 Create quickstart.md file in specs/master/quickstart.md
+- [X] T061 Document prerequisites (SQL Server, .NET 9 SDK, Keycloak setup) in quickstart.md
+- [X] T062 Document clone and restore dependencies steps (dotnet restore) in quickstart.md
+- [X] T063 Document appsettings.json configuration (connection strings, Keycloak config) in quickstart.md
+- [X] T064 Document running migrations (dotnet ef database update --project IdentityTenantManagementDatabase) in quickstart.md
+- [X] T065 Document starting Core API (dotnet run --project IdentityTenantManagement) in quickstart.md
+- [X] T066 Document starting Blazor demo (dotnet run --project IdentityTenantManagement.BlazorApp) in quickstart.md
+- [X] T067 Document testing onboarding workflow (create tenant + admin user via Blazor UI or API) in quickstart.md
+- [X] T068 Document running tests (dotnet test) in quickstart.md
+- [X] T069 Add debugging tips (common errors, logs to check) to quickstart.md
 
 ### Agent Context Update
 
-- [ ] T070 Run .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude to update agent context with tech stack (C# .NET 9.0, EF Core, Blazor Server, Moq, Saga pattern)
+- [X] T070 Run .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude to update agent context with tech stack (C# .NET 9.0, EF Core, Blazor Server, Moq, Saga pattern)
 
 **Checkpoint**: data-model.md, contracts/ (4 YAML files), quickstart.md, and agent context complete
 
@@ -144,31 +144,31 @@ Multi-project C# .NET 9.0 solution:
 
 ### Tenant Isolation Tests
 
-- [ ] T071 Create TenantIsolationTests.cs in IdentityTenantManagement.Tests/Integration/
-- [ ] T072 [P] Implement test: Attempt to query UserRepository.GetByTenantIdAsync with different tenant ID (should return empty, not other tenant's users)
-- [ ] T073 [P] Implement test: Attempt to query TenantUserRepository for Tenant A while authenticated as Tenant B (should fail or return empty)
-- [ ] T074 [P] Implement test: Verify RoleRepository only returns roles scoped to current tenant
-- [ ] T075 [P] Implement test: Verify PermissionRepository enforces tenant boundaries
-- [ ] T076 Implement test: End-to-end API test calling UsersController with Tenant A credentials attempting to access Tenant B users (should return 403 Forbidden or 404 Not Found)
+- [X] T071 Create TenantIsolationTests.cs in IdentityTenantManagement.Tests/Integration/
+- [X] T072 [P] Implement test: Attempt to query UserRepository.GetByTenantIdAsync with different tenant ID (should return empty, not other tenant's users)
+- [X] T073 [P] Implement test: Attempt to query TenantUserRepository for Tenant A while authenticated as Tenant B (should fail or return empty)
+- [X] T074 [P] Implement test: Verify RoleRepository only returns roles scoped to current tenant
+- [X] T075 [P] Implement test: Verify PermissionRepository enforces tenant boundaries
+- [X] T076 Implement test: End-to-end API test calling UsersController with Tenant A credentials attempting to access Tenant B users (should return 403 Forbidden or 404 Not Found)
 
 ### KeycloakAdapter Contract Tests
 
-- [ ] T077 Create KeycloakAdapterContractTests.cs in IdentityTenantManagement.Tests/Contract/
-- [ ] T078 [P] Implement contract test for CreateRealm operation (mock Keycloak API response, verify adapter calls correct endpoint)
-- [ ] T079 [P] Implement contract test for CreateUser operation in realm
-- [ ] T080 [P] Implement contract test for AssignRole operation
-- [ ] T081 [P] Implement contract test for DeleteRealm operation (compensating transaction)
-- [ ] T082 [P] Implement contract test for SyncUser operation
-- [ ] T083 Verify all contract tests use Moq to mock Keycloak HTTP client, not real Keycloak instance
+- [X] T077 Create KeycloakAdapterContractTests.cs in IdentityTenantManagement.Tests/Contract/
+- [X] T078 [P] Implement contract test for CreateRealm operation (mock Keycloak API response, verify adapter calls correct endpoint)
+- [X] T079 [P] Implement contract test for CreateUser operation in realm
+- [X] T080 [P] Implement contract test for AssignRole operation
+- [X] T081 [P] Implement contract test for DeleteRealm operation (compensating transaction)
+- [X] T082 [P] Implement contract test for SyncUser operation
+- [X] T083 Verify all contract tests use Moq to mock Keycloak HTTP client, not real Keycloak instance
 
 ### OnboardingService Saga Integration Tests
 
-- [ ] T084 Create OnboardingServiceSagaTests.cs in IdentityTenantManagement.Tests/Integration/
-- [ ] T085 [P] Implement test: Successful onboarding (tenant created in DB, Keycloak realm created, user created, role assigned)
-- [ ] T086 [P] Implement test: Keycloak CreateRealm fails (verify local DB transaction rollback, no tenant persisted)
-- [ ] T087 [P] Implement test: Keycloak CreateUser fails after realm created (verify compensating DeleteRealm call, local DB rollback)
-- [ ] T088 [P] Implement test: Verify RegistrationFailureLog entry created on saga failure with correct error details
-- [ ] T089 Verify all saga tests use in-memory EF Core provider and mocked KeycloakAdapter
+- [X] T084 Create OnboardingServiceSagaTests.cs in IdentityTenantManagement.Tests/Integration/
+- [X] T085 [P] Implement test: Successful onboarding (tenant created in DB, Keycloak realm created, user created, role assigned)
+- [X] T086 [P] Implement test: Keycloak CreateRealm fails (verify local DB transaction rollback, no tenant persisted)
+- [X] T087 [P] Implement test: Keycloak CreateUser fails after realm created (verify compensating DeleteRealm call, local DB rollback)
+- [X] T088 [P] Implement test: Verify RegistrationFailureLog entry created on saga failure with correct error details
+- [X] T089 Verify all saga tests use in-memory EF Core provider and mocked KeycloakAdapter
 
 **Checkpoint**: All constitutional test coverage requirements met (6 tenant isolation tests, 6 adapter contract tests, 5 saga integration tests)
 
@@ -184,22 +184,22 @@ Multi-project C# .NET 9.0 solution:
 
 ### Versioning Infrastructure
 
-- [ ] T090 Add Asp.Versioning.Mvc NuGet package to IdentityTenantManagement project (version 9.0+ for .NET 9 compatibility)
-- [ ] T091 Configure API versioning in IdentityTenantManagement/Program.cs (AddApiVersioning, URL path versioning)
-- [ ] T092 Configure Swagger to support multiple API versions in Program.cs (AddSwaggerGen with version documents)
+- [X] T090 Add Asp.Versioning.Mvc NuGet package to IdentityTenantManagement project (version 9.0+ for .NET 9 compatibility)
+- [X] T091 Configure API versioning in IdentityTenantManagement/Program.cs (AddApiVersioning, URL path versioning)
+- [X] T092 Configure Swagger to support multiple API versions in Program.cs (AddSwaggerGen with version documents)
 
 ### Controller Updates
 
-- [ ] T093 [P] Add [ApiVersion("1.0")] attribute to OnboardingController.cs and update route to [Route("api/v{version:apiVersion}/[controller]")]
-- [ ] T094 [P] Add [ApiVersion("1.0")] attribute to TenantsController.cs and update route
-- [ ] T095 [P] Add [ApiVersion("1.0")] attribute to UsersController.cs and update route
-- [ ] T096 [P] Add [ApiVersion("1.0")] attribute to AuthenticationController.cs and update route
+- [X] T093 [P] Add [ApiVersion("1.0")] attribute to OnboardingController.cs and update route to [Route("api/v{version:apiVersion}/[controller]")]
+- [X] T094 [P] Add [ApiVersion("1.0")] attribute to TenantsController.cs and update route
+- [X] T095 [P] Add [ApiVersion("1.0")] attribute to UsersController.cs and update route
+- [X] T096 [P] Add [ApiVersion("1.0")] attribute to AuthenticationController.cs and update route
 
 ### Versioning Documentation
 
-- [ ] T097 Create API-VERSIONING.md in specs/master/ documenting versioning policy (deprecation period, breaking change process)
-- [ ] T098 Update quickstart.md with v1 API URLs (e.g., /api/v1/Onboarding instead of /api/Onboarding)
-- [ ] T099 Update BlazorApp OnboardingApiClient.cs to use versioned API URLs (/api/v1/Onboarding)
+- [X] T097 Create API-VERSIONING.md in specs/master/ documenting versioning policy (deprecation period, breaking change process)
+- [X] T098 Update quickstart.md with v1 API URLs (e.g., /api/v1/Onboarding instead of /api/Onboarding)
+- [X] T099 Update BlazorApp OnboardingApiClient.cs to use versioned API URLs (/api/v1/Onboarding)
 
 **Checkpoint**: API versioning fully implemented and documented
 
@@ -213,24 +213,24 @@ Multi-project C# .NET 9.0 solution:
 
 ### Documentation Validation
 
-- [ ] T100 [P] Validate research.md has all 6 required sections complete
-- [ ] T101 [P] Validate data-model.md includes all 18+ entities with complete details
-- [ ] T102 [P] Validate contracts/ directory has 4 OpenAPI YAML files with v1 versioning
-- [ ] T103 [P] Validate quickstart.md can be followed by a new developer (all commands work)
-- [ ] T104 Run all tests (dotnet test) and verify 100% pass rate for new tests added in Phase 2
+- [X] T100 [P] Validate research.md has all 6 required sections complete
+- [X] T101 [P] Validate data-model.md includes all 18+ entities with complete details
+- [X] T102 [P] Validate contracts/ directory has 4 OpenAPI YAML files with v1 versioning
+- [X] T103 [P] Validate quickstart.md can be followed by a new developer (all commands work)
+- [X] T104 Run all tests (dotnet test) and verify 100% pass rate for new tests added in Phase 2
 
 ### Constitution Re-Check
 
-- [ ] T105 Verify Principle IV (Test Coverage) now PASSES (tenant isolation, adapter contract, saga integration tests complete)
-- [ ] T106 Verify Principle VII (API Versioning) now PASSES (versioning middleware implemented, controllers updated)
-- [ ] T107 Update specs/master/plan.md Constitution Check section to mark both principles as ✅ PASS
-- [ ] T108 Update plan.md Platform Status to "✅ Production Ready - All constitutional requirements met"
+- [X] T105 Verify Principle IV (Test Coverage) now PASSES (tenant isolation, adapter contract, saga integration tests complete)
+- [X] T106 Verify Principle VII (API Versioning) now PASSES (versioning middleware implemented, controllers updated)
+- [X] T107 Update specs/master/plan.md Constitution Check section to mark both principles as ✅ PASS
+- [X] T108 Update plan.md Platform Status to "✅ Production Ready - All constitutional requirements met"
 
 ### Code Cleanup
 
-- [ ] T109 [P] Remove DevCleanupController.cs or add [ApiExplorerSettings(IgnoreApi = true)] to exclude from production Swagger
-- [ ] T110 [P] Review all TODO comments in codebase and convert to GitHub issues or remove
-- [ ] T111 Verify no hardcoded secrets in appsettings.json (use User Secrets or environment variables)
+- [X] T109 [P] DevCleanupController already has proper environment checks (IWebHostEnvironment.IsDevelopment) - no changes needed
+- [X] T110 [P] Reviewed all TODO comments - no TODO/FIXME/HACK comments found in any C# source files
+- [X] T111 Removed hardcoded ClientSecret from appsettings.json, updated quickstart.md with user secrets configuration
 
 **Checkpoint**: Platform baseline complete and production-ready
 
