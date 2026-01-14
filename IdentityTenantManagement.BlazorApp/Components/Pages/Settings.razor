@@ -1,0 +1,330 @@
+@page "/settings"
+@using IdentityTenantManagement.BlazorApp.Services
+@inject HttpClient Http
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Settings</PageTitle>
+
+<div style="max-width: 1400px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2 style="margin: 0 0 0.5rem 0;">Organization Settings</h2>
+            <p style="margin: 0; color: var(--gray-600);">Configure global settings for your organization</p>
+        </div>
+        @if (hasUpdatePermission && hasChanges)
+        {
+            <button type="button" class="btn btn-primary" @onclick="SaveChanges" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 0.5rem; display: inline;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span>Save Changes</span>
+                }
+            </button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="text-center" style="padding: 3rem;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p style="margin-top: 1rem; color: var(--gray-600);">Loading settings...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @errorMessage
+        </div>
+    }
+    else if (settings == null || !settings.Any())
+    {
+        <div class="card">
+            <div class="card-body text-center" style="padding: 3rem;">
+                <svg width="64" height="64" fill="none" stroke="var(--gray-400)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <h5>No settings found</h5>
+                <p class="text-muted">There are no global settings configured yet.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Global Settings</h5>
+            </div>
+            <div class="card-body">
+                @foreach (var setting in settings)
+                {
+                    <div class="mb-4 pb-3 border-bottom">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold mb-1">@GetDisplayName(setting.Key)</label>
+                                <p class="text-muted small mb-0">@(setting.Description ?? "No description available")</p>
+                            </div>
+                            <div class="col-md-8">
+                                @if (IsBooleanSetting(setting.Key))
+                                {
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               id="@setting.Key"
+                                               checked="@(setting.Value?.ToLower() == "true")"
+                                               disabled="@(!hasUpdatePermission)"
+                                               @onchange="@(e => OnSettingChanged(setting.Key, ((bool)e.Value!).ToString().ToLower()))">
+                                        <label class="form-check-label" for="@setting.Key">
+                                            @(setting.Value?.ToLower() == "true" ? "Enabled" : "Disabled")
+                                        </label>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control"
+                                           value="@setting.Value"
+                                           disabled="@(!hasUpdatePermission)"
+                                           @onchange="@(e => OnSettingChanged(setting.Key, e.Value?.ToString() ?? ""))">
+                                }
+                                @if (!hasUpdatePermission)
+                                {
+                                    <small class="text-muted">You don't have permission to modify this setting</small>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            @if (settings.Any())
+            {
+                <div class="card-footer text-muted small">
+                    Last updated: @(settings.Max(s => s.UpdatedAt ?? s.CreatedAt).ToString("MMM dd, yyyy HH:mm"))
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<GlobalSettingDto>? settings;
+    private Dictionary<string, string> modifiedSettings = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? errorMessage;
+    private string? successMessage;
+    private bool hasUpdatePermission = false;
+    private bool hasChanges => modifiedSettings.Any();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.OnAuthenticationStateChanged += OnAuthStateChanged;
+        CheckPermissions();
+        await LoadSettings();
+    }
+
+    private async void OnAuthStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            CheckPermissions();
+            StateHasChanged();
+        });
+    }
+
+    private void CheckPermissions()
+    {
+        var permissions = AuthService.CurrentState.UserInfo?.Permissions ?? new List<string>();
+        hasUpdatePermission = permissions.Contains("update-org-settings");
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            if (!AuthService.CurrentState.IsAuthenticated || AuthService.CurrentState.UserInfo == null)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                errorMessage = "Organization ID not found";
+                return;
+            }
+
+            var response = await Http.GetAsync($"api/v1.0/tenants/{organizationId}/settings");
+
+            if (response.IsSuccessStatusCode)
+            {
+                settings = await response.Content.ReadFromJsonAsync<List<GlobalSettingDto>>();
+            }
+            else
+            {
+                errorMessage = $"Failed to load settings: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading settings: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OnSettingChanged(string key, string newValue)
+    {
+        var originalSetting = settings?.FirstOrDefault(s => s.Key == key);
+        if (originalSetting != null)
+        {
+            if (originalSetting.Value != newValue)
+            {
+                modifiedSettings[key] = newValue;
+            }
+            else
+            {
+                modifiedSettings.Remove(key);
+            }
+        }
+        StateHasChanged();
+    }
+
+    private async Task SaveChanges()
+    {
+        if (!modifiedSettings.Any()) return;
+
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            var userInfo = AuthService.CurrentState.UserInfo;
+            var organizationId = userInfo?.OrganizationId;
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                errorMessage = "Organization ID not found";
+                return;
+            }
+
+            var updateRequest = new UpdateSettingsRequest
+            {
+                Settings = modifiedSettings.Select(kv => new UpdateSettingRequest
+                {
+                    Key = kv.Key,
+                    Value = kv.Value
+                }).ToList()
+            };
+
+            // Create request with auth headers explicitly
+            var request = new HttpRequestMessage(HttpMethod.Put, $"api/v1.0/tenants/{organizationId}/settings");
+            request.Content = JsonContent.Create(updateRequest);
+
+            // Add auth headers
+            if (!string.IsNullOrEmpty(userInfo?.UserId))
+            {
+                request.Headers.TryAddWithoutValidation("X-User-Id", userInfo.UserId);
+            }
+            if (!string.IsNullOrEmpty(organizationId))
+            {
+                request.Headers.TryAddWithoutValidation("X-Tenant-Id", organizationId);
+            }
+            if (!string.IsNullOrEmpty(AuthService.CurrentState.AccessToken))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthService.CurrentState.AccessToken);
+            }
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Settings saved successfully!";
+                modifiedSettings.Clear();
+                await LoadSettings();
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                errorMessage = "You don't have permission to update settings";
+            }
+            else
+            {
+                errorMessage = $"Failed to save settings: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving settings: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string GetDisplayName(string key)
+    {
+        return key switch
+        {
+            "RequirePermissionToGrant" => "Require Permission to Grant",
+            _ => key.Replace("-", " ").Replace("_", " ")
+        };
+    }
+
+    private bool IsBooleanSetting(string key)
+    {
+        var setting = settings?.FirstOrDefault(s => s.Key == key);
+        if (setting == null) return false;
+
+        return setting.Value?.ToLower() == "true" || setting.Value?.ToLower() == "false";
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthenticationStateChanged -= OnAuthStateChanged;
+    }
+
+    public class GlobalSettingDto
+    {
+        public Guid Id { get; set; }
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class UpdateSettingRequest
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    public class UpdateSettingsRequest
+    {
+        public List<UpdateSettingRequest> Settings { get; set; } = new();
+    }
+}

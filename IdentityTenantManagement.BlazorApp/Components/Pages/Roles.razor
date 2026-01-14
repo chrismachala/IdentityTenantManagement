@@ -1,0 +1,1038 @@
+@page "/roles"
+@using IdentityTenantManagement.BlazorApp.Services
+@inject HttpClient Http
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Roles & Permissions</PageTitle>
+
+<div style="max-width: 1400px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem;">
+        <h2 style="margin: 0 0 0.5rem 0;">Roles & Permissions</h2>
+        <p style="margin: 0; color: var(--gray-600);">Manage user roles and permissions in your organization</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center" style="padding: 3rem;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p style="margin-top: 1rem; color: var(--gray-600);">Loading users and roles...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @errorMessage
+        </div>
+    }
+    else
+    {
+        <!-- Available Roles Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Available Roles</h5>
+                @if (hasManageRolesPermission)
+                {
+                    <button class="btn btn-primary btn-sm" @onclick="ShowCreateRoleModal">
+                        <span style="margin-right: 0.5rem;">+</span> Create Role
+                    </button>
+                }
+            </div>
+            <div class="card-body">
+                @if (availableRoles == null || !availableRoles.Any())
+                {
+                    <p class="text-muted mb-0">No roles defined in the system.</p>
+                }
+                else
+                {
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                        @foreach (var role in availableRoles)
+                        {
+                            <div class="card">
+                                <div class="card-body">
+                                    <div style="display: flex; justify-content: space-between; align-items-start;">
+                                        <div style="flex: 1;">
+                                            <h6 class="card-title">@role.DisplayName</h6>
+                                            <p class="card-text text-muted small">@role.Description</p>
+                                            <span class="badge bg-secondary">@role.Name</span>
+                                        </div>
+                                        @if (hasManageRolesPermission)
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowEditRoleModal(role)">
+                                                Edit
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Users and Their Roles Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">User Roles</h5>
+            </div>
+            @if (users == null || !users.Any())
+            {
+                <div class="card-body text-center" style="padding: 3rem;">
+                    <svg width="64" height="64" fill="none" stroke="var(--gray-400)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <h5>No users found</h5>
+                    <p class="text-muted">There are no users in this organization yet.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Assigned Roles</th>
+                                @if (hasManageRolesPermission)
+                                {
+                                    <th style="width: 150px;">Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in users)
+                            {
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--success)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                                @GetInitials(user.FirstName, user.LastName)
+                                            </div>
+                                            <span>@user.FirstName @user.LastName</span>
+                                        </div>
+                                    </td>
+                                    <td>@user.Email</td>
+                                    <td>
+                                        @if (user.Roles != null && user.Roles.Any())
+                                        {
+                                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                                @foreach (var role in user.Roles)
+                                                {
+                                                    <span class="badge bg-primary">@role</span>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No roles assigned</span>
+                                        }
+                                    </td>
+                                    @if (hasManageRolesPermission)
+                                    {
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowManageRolesModal(user)">
+                                                Manage Roles
+                                            </button>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Manage Roles & Permissions Modal -->
+@if (showManageRolesModal && selectedUser != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Roles & Permissions for @selectedUser.FirstName @selectedUser.LastName</h5>
+                    <button type="button" class="btn-close" @onclick="CloseManageRolesModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isLoadingUserRoles)
+                    {
+                        <div class="text-center" style="padding: 2rem;">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p style="margin-top: 1rem; color: var(--gray-600);">Loading user roles and permissions...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <!-- Roles Section -->
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Roles</h6>
+                                @if (availableRoles == null || !availableRoles.Any())
+                                {
+                                    <p class="text-muted">No roles available.</p>
+                                }
+                                else
+                                {
+                                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--gray-300); border-radius: 0.375rem; padding: 1rem;">
+                                        @foreach (var role in availableRoles)
+                                        {
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="checkbox"
+                                                       id="role-@role.Id"
+                                                       checked="@selectedUserRoleIds.Contains(role.Id)"
+                                                       @onchange="@((e) => ToggleUserRole(role.Id, (bool)e.Value!))" />
+                                                <label class="form-check-label" for="role-@role.Id">
+                                                    <strong>@role.DisplayName</strong>
+                                                    <small class="text-muted d-block">@role.Description</small>
+                                                </label>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Permissions Section -->
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Direct Permissions</h6>
+                                <small class="text-muted d-block mb-2">Permissions assigned directly to the user (not through roles)</small>
+                                @if (allPermissions == null || !allPermissions.Any())
+                                {
+                                    <p class="text-muted">Loading permissions...</p>
+                                }
+                                else
+                                {
+                                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--gray-300); border-radius: 0.375rem; padding: 1rem;">
+                                        @foreach (var permissionGroup in allPermissions.GroupBy(p => p.PermissionGroup))
+                                        {
+                                            <div class="mb-3">
+                                                <h6 class="text-muted" style="font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                                    @(string.IsNullOrEmpty(permissionGroup.Key) ? "General" : permissionGroup.Key)
+                                                </h6>
+                                                @foreach (var permission in permissionGroup)
+                                                {
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               id="userperm-@permission.Id"
+                                                               checked="@selectedUserPermissionIds.Contains(permission.Id)"
+                                                               @onchange="@((e) => ToggleUserPermission(permission.Id, (bool)e.Value!))" />
+                                                        <label class="form-check-label" for="userperm-@permission.Id">
+                                                            <strong>@permission.DisplayName</strong>
+                                                            <small class="text-muted d-block">@permission.Description</small>
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(modalErrorMessage))
+                        {
+                            <div class="alert alert-danger mt-3">@modalErrorMessage</div>
+                        }
+                        @if (!string.IsNullOrEmpty(modalSuccessMessage))
+                        {
+                            <div class="alert alert-success mt-3">@modalSuccessMessage</div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseManageRolesModal" disabled="@isUpdatingRoles">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveUserRolesAndPermissions" disabled="@isUpdatingRoles">
+                        @if (isUpdatingRoles)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Create/Edit Role Modal -->
+@if (showRoleEditorModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show" style="display: block;" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditingRole ? "Edit Role" : "Create New Role")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseRoleEditorModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (isLoadingRoleDetails)
+                    {
+                        <div class="text-center" style="padding: 2rem;">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p style="margin-top: 1rem; color: var(--gray-600);">Loading role details...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Role Name (Identifier)</label>
+                                    <input type="text" class="form-control" @bind="editRoleName"
+                                           disabled="@isEditingRole"
+                                           placeholder="e.g., org-admin" />
+                                    @if (!isEditingRole)
+                                    {
+                                        <small class="text-muted">Cannot be changed after creation</small>
+                                    }
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Display Name</label>
+                                    <input type="text" class="form-control" @bind="editRoleDisplayName"
+                                           placeholder="e.g., Organization Administrator" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" @bind="editRoleDescription"
+                                              rows="3"
+                                              placeholder="Describe what this role can do..."></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Permissions</h6>
+                                @if (allPermissions == null || !allPermissions.Any())
+                                {
+                                    <p class="text-muted">Loading permissions...</p>
+                                }
+                                else
+                                {
+                                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--gray-300); border-radius: 0.375rem; padding: 1rem;">
+                                        @foreach (var permissionGroup in allPermissions.GroupBy(p => p.PermissionGroup))
+                                        {
+                                            <div class="mb-3">
+                                                <h6 class="text-muted" style="font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                                    @(string.IsNullOrEmpty(permissionGroup.Key) ? "General" : permissionGroup.Key)
+                                                </h6>
+                                                @foreach (var permission in permissionGroup)
+                                                {
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               id="perm-@permission.Id"
+                                                               checked="@selectedPermissionIds.Contains(permission.Id)"
+                                                               @onchange="@((e) => TogglePermission(permission.Id, (bool)e.Value!))" />
+                                                        <label class="form-check-label" for="perm-@permission.Id">
+                                                            <strong>@permission.DisplayName</strong>
+                                                            <small class="text-muted d-block">@permission.Description</small>
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(roleEditorErrorMessage))
+                        {
+                            <div class="alert alert-danger mt-3">@roleEditorErrorMessage</div>
+                        }
+                        @if (!string.IsNullOrEmpty(roleEditorSuccessMessage))
+                        {
+                            <div class="alert alert-success mt-3">@roleEditorSuccessMessage</div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseRoleEditorModal" disabled="@isSavingRole">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveRole" disabled="@isSavingRole">
+                        @if (isSavingRole)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        @(isEditingRole ? "Save Changes" : "Create Role")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<UserSummaryDto>? users;
+    private List<RoleDto>? availableRoles;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    // Permissions
+    private bool hasManageRolesPermission = false;
+
+    // Manage roles modal
+    private bool showManageRolesModal = false;
+    private UserSummaryDto? selectedUser;
+    private UserRolesResponse? userRoles;
+    private bool isLoadingUserRoles = false;
+    private bool isUpdatingRoles = false;
+    private string? modalErrorMessage;
+    private string? modalSuccessMessage;
+
+    // User role and permission selection tracking
+    private HashSet<Guid> selectedUserRoleIds = new();
+    private HashSet<Guid> originalUserRoleIds = new();
+    private HashSet<Guid> selectedUserPermissionIds = new();
+    private HashSet<Guid> originalUserPermissionIds = new();
+
+    // Role editor modal
+    private bool showRoleEditorModal = false;
+    private bool isEditingRole = false;
+    private RoleDto? editingRole;
+    private string editRoleName = "";
+    private string editRoleDisplayName = "";
+    private string editRoleDescription = "";
+    private List<PermissionDto>? allPermissions;
+    private HashSet<Guid> selectedPermissionIds = new();
+    private HashSet<Guid> originalPermissionIds = new();
+    private bool isLoadingRoleDetails = false;
+    private bool isSavingRole = false;
+    private string? roleEditorErrorMessage;
+    private string? roleEditorSuccessMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.OnAuthenticationStateChanged += OnAuthStateChanged;
+        CheckPermissions();
+        await LoadData();
+    }
+
+    private async void OnAuthStateChanged()
+    {
+        await InvokeAsync(() =>
+        {
+            CheckPermissions();
+            StateHasChanged();
+        });
+    }
+
+    private void CheckPermissions()
+    {
+        var permissions = AuthService.CurrentState.UserInfo?.Permissions ?? new List<string>();
+
+        // Check for manage-roles permission or any admin-related permissions
+        hasManageRolesPermission = permissions.Contains("manage-roles")
+            || permissions.Contains("admin")
+            || permissions.Contains("update-users")
+            || permissions.Contains("delete-users")
+            || permissions.Any(p => p.Contains("admin"));
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            if (!AuthService.CurrentState.IsAuthenticated || AuthService.CurrentState.UserInfo == null)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                errorMessage = "Organization ID not found";
+                return;
+            }
+
+            // Load users
+            var usersResponse = await Http.GetAsync($"api/v1.0/tenants/{organizationId}/users?includeInactive=false&page=1&pageSize=100");
+            if (usersResponse.IsSuccessStatusCode)
+            {
+                var paginatedResponse = await usersResponse.Content.ReadFromJsonAsync<PaginatedUsersResponse>();
+                users = paginatedResponse?.Users;
+            }
+            else
+            {
+                errorMessage = $"Failed to load users: {usersResponse.StatusCode}";
+                return;
+            }
+
+            // Load available roles
+            var rolesResponse = await Http.GetAsync($"api/v1.0/tenants/{organizationId}/rolespermission/roles");
+            if (rolesResponse.IsSuccessStatusCode)
+            {
+                availableRoles = await rolesResponse.Content.ReadFromJsonAsync<List<RoleDto>>();
+            }
+            else
+            {
+                errorMessage = $"Failed to load roles: {rolesResponse.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ShowManageRolesModal(UserSummaryDto user)
+    {
+        selectedUser = user;
+        modalErrorMessage = null;
+        modalSuccessMessage = null;
+        selectedUserRoleIds = new HashSet<Guid>();
+        originalUserRoleIds = new HashSet<Guid>();
+        selectedUserPermissionIds = new HashSet<Guid>();
+        originalUserPermissionIds = new HashSet<Guid>();
+        showManageRolesModal = true;
+
+        // Load all permissions first
+        await LoadAllPermissions();
+
+        // Then load user's current roles and permissions
+        await LoadUserRoles();
+    }
+
+    private async Task LoadUserRoles()
+    {
+        if (selectedUser == null) return;
+
+        try
+        {
+            isLoadingUserRoles = true;
+            modalErrorMessage = null;
+
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                modalErrorMessage = "Organization ID not found";
+                return;
+            }
+
+            var response = await Http.GetAsync($"api/v1.0/tenants/{organizationId}/rolespermission/users/{selectedUser.UserId}/roles");
+
+            if (response.IsSuccessStatusCode)
+            {
+                userRoles = await response.Content.ReadFromJsonAsync<UserRolesResponse>();
+
+                if (userRoles != null)
+                {
+                    // Set currently assigned roles
+                    selectedUserRoleIds = userRoles.Roles.Select(r => r.RoleId).ToHashSet();
+                    originalUserRoleIds = new HashSet<Guid>(selectedUserRoleIds);
+
+                    // Set currently assigned direct permissions
+                    selectedUserPermissionIds = userRoles.DirectPermissions.Select(p => p.Id).ToHashSet();
+                    originalUserPermissionIds = new HashSet<Guid>(selectedUserPermissionIds);
+                }
+            }
+            else
+            {
+                modalErrorMessage = $"Failed to load user roles: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessage = $"Error loading user roles: {ex.Message}";
+        }
+        finally
+        {
+            isLoadingUserRoles = false;
+        }
+    }
+
+    private void CloseManageRolesModal()
+    {
+        showManageRolesModal = false;
+        selectedUser = null;
+        userRoles = null;
+        modalErrorMessage = null;
+        modalSuccessMessage = null;
+        selectedUserRoleIds = new HashSet<Guid>();
+        originalUserRoleIds = new HashSet<Guid>();
+        selectedUserPermissionIds = new HashSet<Guid>();
+        originalUserPermissionIds = new HashSet<Guid>();
+    }
+
+    private void ToggleUserRole(Guid roleId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            selectedUserRoleIds.Add(roleId);
+        }
+        else
+        {
+            selectedUserRoleIds.Remove(roleId);
+        }
+    }
+
+    private void ToggleUserPermission(Guid permissionId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            selectedUserPermissionIds.Add(permissionId);
+        }
+        else
+        {
+            selectedUserPermissionIds.Remove(permissionId);
+        }
+    }
+
+    private async Task SaveUserRolesAndPermissions()
+    {
+        if (selectedUser == null) return;
+
+        try
+        {
+            isUpdatingRoles = true;
+            modalErrorMessage = null;
+            modalSuccessMessage = null;
+
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                modalErrorMessage = "Organization ID not found";
+                return;
+            }
+
+            // Calculate role changes
+            var rolesToAdd = selectedUserRoleIds.Except(originalUserRoleIds).ToList();
+            var rolesToRemove = originalUserRoleIds.Except(selectedUserRoleIds).ToList();
+
+            // Calculate permission changes
+            var permissionsToAdd = selectedUserPermissionIds.Except(originalUserPermissionIds).ToList();
+            var permissionsToRemove = originalUserPermissionIds.Except(selectedUserPermissionIds).ToList();
+
+            // Apply role changes
+            foreach (var roleId in rolesToAdd)
+            {
+                var assignModel = new { UserId = selectedUser.UserId, RoleId = roleId };
+                var response = await Http.PostAsJsonAsync($"api/v1.0/tenants/{organizationId}/rolespermission/assign", assignModel);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    modalErrorMessage = $"Failed to assign role: {error}";
+                    return;
+                }
+            }
+
+            foreach (var roleId in rolesToRemove)
+            {
+                var response = await Http.DeleteAsync($"api/v1.0/tenants/{organizationId}/rolespermission/users/{selectedUser.UserId}/roles/{roleId}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    modalErrorMessage = $"Failed to remove role: {error}";
+                    return;
+                }
+            }
+
+            // Apply permission changes
+            foreach (var permissionId in permissionsToAdd)
+            {
+                var response = await Http.PostAsync($"api/v1.0/tenants/{organizationId}/rolespermission/users/{selectedUser.UserId}/permissions/{permissionId}", null);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    modalErrorMessage = $"Failed to assign permission: {error}";
+                    return;
+                }
+            }
+
+            foreach (var permissionId in permissionsToRemove)
+            {
+                var response = await Http.DeleteAsync($"api/v1.0/tenants/{organizationId}/rolespermission/users/{selectedUser.UserId}/permissions/{permissionId}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    modalErrorMessage = $"Failed to remove permission: {error}";
+                    return;
+                }
+            }
+
+            modalSuccessMessage = "Roles and permissions updated successfully!";
+
+            // Update originals to reflect saved state
+            originalUserRoleIds = new HashSet<Guid>(selectedUserRoleIds);
+            originalUserPermissionIds = new HashSet<Guid>(selectedUserPermissionIds);
+
+            // Refresh user list
+            await LoadData();
+
+            // Close modal after a short delay
+            await Task.Delay(1500);
+            CloseManageRolesModal();
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessage = $"Error saving changes: {ex.Message}";
+        }
+        finally
+        {
+            isUpdatingRoles = false;
+        }
+    }
+
+    private string GetInitials(string? firstName, string? lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        return first + last;
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthenticationStateChanged -= OnAuthStateChanged;
+    }
+
+    private async Task ShowCreateRoleModal()
+    {
+        isEditingRole = false;
+        editingRole = null;
+        editRoleName = "";
+        editRoleDisplayName = "";
+        editRoleDescription = "";
+        selectedPermissionIds = new HashSet<Guid>();
+        originalPermissionIds = new HashSet<Guid>();
+        roleEditorErrorMessage = null;
+        roleEditorSuccessMessage = null;
+        showRoleEditorModal = true;
+
+        await LoadAllPermissions();
+    }
+
+    private async Task ShowEditRoleModal(RoleDto role)
+    {
+        isEditingRole = true;
+        editingRole = role;
+        editRoleName = role.Name;
+        editRoleDisplayName = role.DisplayName;
+        editRoleDescription = role.Description;
+        roleEditorErrorMessage = null;
+        roleEditorSuccessMessage = null;
+        showRoleEditorModal = true;
+
+        await LoadRoleDetails(role.Id);
+    }
+
+    private void CloseRoleEditorModal()
+    {
+        showRoleEditorModal = false;
+        isEditingRole = false;
+        editingRole = null;
+        editRoleName = "";
+        editRoleDisplayName = "";
+        editRoleDescription = "";
+        selectedPermissionIds = new HashSet<Guid>();
+        originalPermissionIds = new HashSet<Guid>();
+        roleEditorErrorMessage = null;
+        roleEditorSuccessMessage = null;
+    }
+
+    private async Task LoadAllPermissions()
+    {
+        try
+        {
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                roleEditorErrorMessage = "Organization ID not found";
+                return;
+            }
+
+            var response = await Http.GetAsync($"api/v1.0/tenants/{organizationId}/rolespermission/permissions");
+            if (response.IsSuccessStatusCode)
+            {
+                allPermissions = await response.Content.ReadFromJsonAsync<List<PermissionDto>>();
+            }
+            else
+            {
+                roleEditorErrorMessage = $"Failed to load permissions: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            roleEditorErrorMessage = $"Error loading permissions: {ex.Message}";
+        }
+    }
+
+    private async Task LoadRoleDetails(Guid roleId)
+    {
+        try
+        {
+            isLoadingRoleDetails = true;
+            roleEditorErrorMessage = null;
+
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                roleEditorErrorMessage = "Organization ID not found";
+                return;
+            }
+
+            // Load all permissions
+            await LoadAllPermissions();
+
+            // Load role with permissions
+            var response = await Http.GetAsync($"api/v1.0/tenants/{organizationId}/rolespermission/roles/{roleId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var roleWithPermissions = await response.Content.ReadFromJsonAsync<RoleWithPermissionsDto>();
+                if (roleWithPermissions != null)
+                {
+                    selectedPermissionIds = roleWithPermissions.Permissions.Select(p => p.Id).ToHashSet();
+                    originalPermissionIds = new HashSet<Guid>(selectedPermissionIds);
+                }
+            }
+            else
+            {
+                roleEditorErrorMessage = $"Failed to load role details: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            roleEditorErrorMessage = $"Error loading role details: {ex.Message}";
+        }
+        finally
+        {
+            isLoadingRoleDetails = false;
+        }
+    }
+
+    private void TogglePermission(Guid permissionId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            selectedPermissionIds.Add(permissionId);
+        }
+        else
+        {
+            selectedPermissionIds.Remove(permissionId);
+        }
+    }
+
+    private async Task SaveRole()
+    {
+        try
+        {
+            isSavingRole = true;
+            roleEditorErrorMessage = null;
+            roleEditorSuccessMessage = null;
+
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                roleEditorErrorMessage = "Organization ID not found";
+                return;
+            }
+
+            // Validate inputs
+            if (string.IsNullOrWhiteSpace(editRoleName) && !isEditingRole)
+            {
+                roleEditorErrorMessage = "Role name is required";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(editRoleDisplayName))
+            {
+                roleEditorErrorMessage = "Display name is required";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(editRoleDescription))
+            {
+                roleEditorErrorMessage = "Description is required";
+                return;
+            }
+
+            if (isEditingRole && editingRole != null)
+            {
+                // Update existing role
+                var updateRequest = new
+                {
+                    DisplayName = editRoleDisplayName,
+                    Description = editRoleDescription
+                };
+
+                var updateResponse = await Http.PutAsJsonAsync(
+                    $"api/v1.0/tenants/{organizationId}/rolespermission/roles/{editingRole.Id}",
+                    updateRequest);
+
+                if (!updateResponse.IsSuccessStatusCode)
+                {
+                    var error = await updateResponse.Content.ReadAsStringAsync();
+                    roleEditorErrorMessage = $"Failed to update role: {error}";
+                    return;
+                }
+
+                // Update permissions
+                var permissionsToAdd = selectedPermissionIds.Except(originalPermissionIds).ToList();
+                var permissionsToRemove = originalPermissionIds.Except(selectedPermissionIds).ToList();
+
+                // Add new permissions
+                foreach (var permissionId in permissionsToAdd)
+                {
+                    var addResponse = await Http.PostAsync(
+                        $"api/v1.0/tenants/{organizationId}/rolespermission/roles/{editingRole.Id}/permissions/{permissionId}",
+                        null);
+
+                    if (!addResponse.IsSuccessStatusCode)
+                    {
+                        var error = await addResponse.Content.ReadAsStringAsync();
+                        roleEditorErrorMessage = $"Failed to add permission: {error}";
+                        return;
+                    }
+                }
+
+                // Remove old permissions
+                foreach (var permissionId in permissionsToRemove)
+                {
+                    var removeResponse = await Http.DeleteAsync(
+                        $"api/v1.0/tenants/{organizationId}/rolespermission/roles/{editingRole.Id}/permissions/{permissionId}");
+
+                    if (!removeResponse.IsSuccessStatusCode)
+                    {
+                        var error = await removeResponse.Content.ReadAsStringAsync();
+                        roleEditorErrorMessage = $"Failed to remove permission: {error}";
+                        return;
+                    }
+                }
+
+                roleEditorSuccessMessage = "Role updated successfully!";
+            }
+            else
+            {
+                // Create new role
+                var createRequest = new
+                {
+                    Name = editRoleName,
+                    DisplayName = editRoleDisplayName,
+                    Description = editRoleDescription,
+                    PermissionIds = selectedPermissionIds.ToList()
+                };
+
+                var createResponse = await Http.PostAsJsonAsync(
+                    $"api/v1.0/tenants/{organizationId}/rolespermission/roles",
+                    createRequest);
+
+                if (!createResponse.IsSuccessStatusCode)
+                {
+                    var error = await createResponse.Content.ReadAsStringAsync();
+                    roleEditorErrorMessage = $"Failed to create role: {error}";
+                    return;
+                }
+
+                roleEditorSuccessMessage = "Role created successfully!";
+            }
+
+            // Reload roles list
+            await LoadData();
+
+            // Close modal after a short delay
+            await Task.Delay(1500);
+            CloseRoleEditorModal();
+        }
+        catch (Exception ex)
+        {
+            roleEditorErrorMessage = $"Error saving role: {ex.Message}";
+        }
+        finally
+        {
+            isSavingRole = false;
+        }
+    }
+
+    // DTOs
+    public class UserSummaryDto
+    {
+        public Guid UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public DateTime? InactiveAt { get; set; }
+        public DateTime JoinedAt { get; set; }
+        public List<string> Roles { get; set; } = new();
+    }
+
+    public class PaginatedUsersResponse
+    {
+        public List<UserSummaryDto> Users { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+    }
+
+    public class RoleDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class UserRoleDto
+    {
+        public Guid Id { get; set; }
+        public Guid RoleId { get; set; }
+        public string RoleName { get; set; } = string.Empty;
+        public string RoleDisplayName { get; set; } = string.Empty;
+        public string RoleDescription { get; set; } = string.Empty;
+        public DateTime AssignedAt { get; set; }
+    }
+
+    public class UserRolesResponse
+    {
+        public Guid UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public List<UserRoleDto> Roles { get; set; } = new();
+        public List<PermissionDto> DirectPermissions { get; set; } = new();
+    }
+
+    public class RoleWithPermissionsDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public List<PermissionDto> Permissions { get; set; } = new();
+    }
+
+    public class PermissionDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string PermissionGroup { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+    }
+}
