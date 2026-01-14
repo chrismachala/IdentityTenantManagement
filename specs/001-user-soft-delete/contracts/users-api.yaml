@@ -1,0 +1,540 @@
+openapi: 3.0.3
+info:
+  title: Identity Tenant Management - Users API (Soft-Delete)
+  description: |
+    API endpoints for user management with soft-delete support.
+
+    Changes from previous version:
+    - DELETE endpoint now performs soft-delete (reversible) instead of hard delete
+    - GET endpoints support `includeInactive` query parameter to include soft-deleted users
+    - Added administrative endpoints for managing deletion-failed users
+  version: 1.1.0
+  contact:
+    name: Identity Tenant Management Team
+
+servers:
+  - url: https://api.example.com/api/v1
+    description: Production server
+  - url: http://localhost:5000/api/v1
+    description: Local development server
+
+tags:
+  - name: Users
+    description: User management operations
+  - name: Admin
+    description: Administrative operations (requires elevated permissions)
+
+paths:
+  /tenants/{tenantId}/users:
+    get:
+      tags:
+        - Users
+      summary: List users in tenant
+      description: |
+        Returns a list of users associated with the specified tenant.
+        By default, only active users are returned. Use `includeInactive=true` to include soft-deleted users.
+      operationId: getUsers
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: includeInactive
+          in: query
+          description: Include users marked as inactive (soft-deleted)
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of results per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /tenants/{tenantId}/users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get user details
+      description: Returns detailed information about a specific user in the tenant
+      operationId: getUser
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User or tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+    delete:
+      tags:
+        - Users
+      summary: Soft-delete user from tenant
+      description: |
+        Marks the user as inactive in the specified tenant. This is a soft-delete operation:
+        - User's profile is marked inactive
+        - All active sessions and tokens are revoked within 35 seconds
+        - User cannot log in to this tenant
+        - User data is retained for audit purposes
+        - Operation is reversible via reactivation
+
+        **Breaking Change Note**: Previous versions performed hard deletion. This version performs soft-delete for data retention and compliance.
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '204':
+          description: User successfully soft-deleted (no content)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User or tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User cannot be deleted (e.g., last admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /tenants/{tenantId}/users/{userId}/reactivate:
+    post:
+      tags:
+        - Users
+      summary: Reactivate soft-deleted user
+      description: |
+        Reactivates a user that was previously soft-deleted from the tenant.
+        User regains access and appears in standard user lists.
+      operationId: reactivateUser
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: User reactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User or tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User is not inactive or already active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /admin/users/deletion-failed:
+    get:
+      tags:
+        - Admin
+      summary: List users with failed permanent deletion
+      description: |
+        Returns a list of globally inactive users where permanent deletion failed after 3 retry attempts.
+        Requires SystemAdministrator role.
+      operationId: getDeletionFailedUsers
+      responses:
+        '200':
+          description: List of users with deletion failures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeletionFailedUser'
+                  totalCount:
+                    type: integer
+                    example: 5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Requires SystemAdministrator role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: [SystemAdministrator]
+
+  /admin/users/{userId}/retry-deletion:
+    post:
+      tags:
+        - Admin
+      summary: Retry permanent deletion for failed user
+      description: |
+        Manually triggers a retry of permanent deletion for a user in deletion-failed status.
+        Resets retry count and attempts deletion again. Requires SystemAdministrator role.
+      operationId: retryUserDeletion
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '202':
+          description: Deletion retry scheduled (async operation)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Deletion retry scheduled for user"
+                  userId:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Requires SystemAdministrator role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found or not in deletion-failed status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: [SystemAdministrator]
+
+  /admin/deletion-policy:
+    get:
+      tags:
+        - Admin
+      summary: Get permanent deletion policy configuration
+      description: |
+        Returns current configuration for permanent deletion of globally inactive users.
+        Requires SystemAdministrator role.
+      operationId: getDeletionPolicy
+      responses:
+        '200':
+          description: Current deletion policy configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionPolicyConfiguration'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Requires SystemAdministrator role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: [SystemAdministrator]
+
+    put:
+      tags:
+        - Admin
+      summary: Update permanent deletion policy
+      description: |
+        Updates configuration for permanent deletion of globally inactive users.
+        Changes take effect immediately for next background job execution.
+        Requires SystemAdministrator role.
+      operationId: updateDeletionPolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletionPolicyUpdate'
+      responses:
+        '200':
+          description: Policy updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionPolicyConfiguration'
+        '400':
+          description: Invalid configuration values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden - Requires SystemAdministrator role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: [SystemAdministrator]
+
+components:
+  parameters:
+    TenantIdPath:
+      name: tenantId
+      in: path
+      description: Unique identifier for the tenant
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    UserIdPath:
+      name: userId
+      in: path
+      description: Unique identifier for the user
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, suspended, pending]
+        inactiveAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when user was marked inactive in this tenant (null if active)
+        joinedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - status
+
+    UserDetail:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          properties:
+            roles:
+              type: array
+              items:
+                type: string
+              example: ["TenantAdmin", "User"]
+            permissions:
+              type: array
+              items:
+                type: string
+              example: ["users.read", "users.write"]
+            globallyInactive:
+              type: boolean
+              description: True if user is inactive across all tenants
+            globallyInactiveAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Timestamp when user became inactive across all tenants
+
+    DeletionFailedUser:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        globallyInactiveAt:
+          type: string
+          format: date-time
+        deletionFailedAt:
+          type: string
+          format: date-time
+        deletionFailedReason:
+          type: string
+        retryCount:
+          type: integer
+          minimum: 0
+          maximum: 3
+      required:
+        - userId
+        - email
+        - globallyInactiveAt
+        - deletionFailedAt
+        - deletionFailedReason
+        - retryCount
+
+    DeletionPolicyConfiguration:
+      type: object
+      properties:
+        permanentDeletionEnabled:
+          type: boolean
+          description: Master switch for permanent deletion background job
+        retentionPeriodDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+          description: Number of days user must be globally inactive before eligible for permanent deletion
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+          description: Username of admin who last updated the policy
+      required:
+        - permanentDeletionEnabled
+        - retentionPeriodDays
+        - updatedAt
+        - updatedBy
+
+    DeletionPolicyUpdate:
+      type: object
+      properties:
+        permanentDeletionEnabled:
+          type: boolean
+        retentionPeriodDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+      required:
+        - permanentDeletionEnabled
+        - retentionPeriodDays
+
+    Pagination:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalPages:
+          type: integer
+          minimum: 0
+        totalCount:
+          type: integer
+          minimum: 0
+      required:
+        - currentPage
+        - pageSize
+        - totalPages
+        - totalCount
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code or type
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          nullable: true
+          description: Additional error details (optional)
+      required:
+        - error
+        - message
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Insufficient permissions for this operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication endpoint

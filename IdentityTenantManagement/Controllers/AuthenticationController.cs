@@ -12,12 +12,12 @@ namespace IdentityTenantManagement.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class AuthenticationController : ControllerBase
 {
-    private readonly IKCAuthenticationService _authenticationService;
+    private readonly IAuthenticationOrchestrationService _authenticationService;
     private readonly PermissionService _permissionService;
     private readonly ILogger<AuthenticationController> _logger;
 
     public AuthenticationController(
-        IKCAuthenticationService authenticationService,
+        IAuthenticationOrchestrationService authenticationService,
         PermissionService permissionService,
         ILogger<AuthenticationController> logger)
     {
@@ -48,10 +48,10 @@ public class AuthenticationController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("permissions/{keycloakUserId}/{keycloakOrgId}")]
-    public async Task<ActionResult<List<string>>> GetUserPermissions(string keycloakUserId, string keycloakOrgId)
+    [HttpGet("permissions/{userId}/{tenantId}")]
+    public async Task<ActionResult<List<string>>> GetUserPermissions(Guid userId, Guid tenantId)
     {
-        var permissions = await _permissionService.GetUserPermissionsByExternalIdsAsync(keycloakUserId, keycloakOrgId);
+        var permissions = await _permissionService.GetUserPermissionsAsync(tenantId, userId);
         return Ok(permissions);
     }
 }

@@ -1,9 +1,11 @@
 using IdentityTenantManagement.Constants;
+using IdentityTenantManagement.Models.Onboarding;
 using IdentityTenantManagementDatabase.Models;
 using IdentityTenantManagementDatabase.Repositories;
 using IO.Swagger.Model;
 using KeycloakAdapter.Models;
 using KeycloakAdapter.Services;
+using IdentityTenantManagement.Models.Onboarding;
 
 namespace IdentityTenantManagement.Services;
 
@@ -17,16 +19,19 @@ public class TenantOrchestrationService : ITenantOrchestrationService
 {
     private readonly IKCOrganisationService _kcOrganisationService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IKCUserService _kcUserService;
     private readonly ILogger<TenantOrchestrationService> _logger;
     private readonly IRoleService _roleService;
 
     public TenantOrchestrationService(
         IKCOrganisationService kcOrganisationService,
         IUnitOfWork unitOfWork,
+        IKCUserService kcUserService,
         ILogger<TenantOrchestrationService> logger,
         IRoleService roleService)
     {
         _kcOrganisationService = kcOrganisationService;
+        _kcUserService = kcUserService;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _roleService = roleService;
@@ -77,40 +82,91 @@ public class TenantOrchestrationService : ITenantOrchestrationService
         _logger.LogInformation("Starting user invitation saga for tenant {TenantId}", model.TenantId);
 
         // Track saga state for compensating transactions
-        string? invitedUserId = null;
+        string? userId = null;
+        bool userWasCreated = false;
         bool databaseTransactionStarted = false;
 
         try
         {
-            // Step 1: Invite user in Keycloak (creates user and adds to org)
-            _logger.LogInformation("Saga Step 1: Inviting user to tenant in Keycloak");
-            invitedUserId = await _kcOrganisationService.InviteUserToOrganisationAsync(model);
-            _logger.LogInformation("Saga Step 1: User invited successfully with ID {UserId}", invitedUserId);
+            CreateUserModel cum = new CreateUserModel()
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+            };
 
-            // Step 2: Persist user to database with transaction
-            // Note: User details will be synced by RegistrationProcessorService
-            // This ensures the user-tenant relationship is tracked
-            _logger.LogInformation("Saga Step 2: Persisting user invitation to database");
+            // Step 1: Get or create user in Keycloak (without password for invitations)
+            _logger.LogInformation("Saga Step 1: Getting or creating user in Keycloak");
+            var existingUser = await _kcUserService.TryGetUserByEmailAsync(cum.Email);
+            UserRepresentation userRepresentation;
+
+            if (existingUser != null)
+            {
+                _logger.LogInformation("User already exists with email: {Email}, using existing user", cum.Email);
+                userRepresentation = existingUser;
+                userWasCreated = false;
+            }
+            else
+            {
+                _logger.LogInformation("User does not exist, creating new user for invitation: {Email}", cum.Email);
+                await _kcUserService.CreateUserAsync(cum);
+                userRepresentation = await _kcUserService.GetUserByEmailAsync(cum.Email);
+                userWasCreated = true;
+                await _kcUserService.SendCreatePasswordResetEmailAsync(userRepresentation.Id);
+ 
+            }
+
+            userId = userRepresentation.Id;
+            _logger.LogInformation("Saga Step 1: User retrieved/created successfully with ID {UserId}", userId);
+
+            // Step 2: Resolve internal tenant ID from Keycloak tenant ID
+            var keycloakProviderId = Guid.Parse("049284C1-FF29-4F28-869F-F64300B69719");
+            var tenantExternalIdentities = await _unitOfWork.ExternalIdentities.GetByEntityAsync(ExternalIdentityEntityTypeIds.Tenant, Guid.Parse(model.TenantId));
+            var tenantExternalIdentity = tenantExternalIdentities.FirstOrDefault(e => e.ProviderId == keycloakProviderId)?.ExternalIdentifier;
+
+            if (tenantExternalIdentity == null)
+            {
+                throw new InvalidOperationException($"Could not find Keycloak tenant ID for internal tenant ID {model.TenantId}");
+            }
+
+            model.TenantId = tenantExternalIdentity;
+
+            // Step 3: Link user to organization in Keycloak
+            _logger.LogInformation("Saga Step 2: Linking user {UserId} to tenant {TenantId} in Keycloak", userId, model.TenantId);
+            UserTenantModel utm = new UserTenantModel()
+            {
+                UserId = userId,
+                TenantId = model.TenantId
+                
+            };
+            await _kcOrganisationService.AddUserToOrganisationAsync(utm);
+            _logger.LogInformation("Saga Step 2: User linked to tenant successfully");
+
+            // Step 4: Persist user to database with transaction
+            _logger.LogInformation("Saga Step 3: Persisting user invitation to database");
             await _unitOfWork.BeginTransactionAsync();
             databaseTransactionStarted = true;
 
-            await PersistInvitedUserToDatabaseAsync(invitedUserId, model);
+            await PersistInvitedUserToDatabaseAsync(userRepresentation, model);
             await _unitOfWork.CommitAsync();
 
-            _logger.LogInformation("Saga completed successfully for user invitation {UserId} to tenant {TenantId}", invitedUserId, model.TenantId);
-            return invitedUserId;
+            _logger.LogInformation("Saga completed successfully for user invitation {UserId} to tenant {TenantId}", userId, model.TenantId);
+            return userId;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Saga failed for user invitation to tenant {TenantId}. Starting compensating transactions. State: UserId={UserId}, DbTransaction={DbTransaction}",
-                model.TenantId, invitedUserId, databaseTransactionStarted);
+            _logger.LogError(ex, "Saga failed for user invitation to tenant {TenantId}. Starting compensating transactions. State: UserId={UserId}, UserWasCreated={UserWasCreated}, DbTransaction={DbTransaction}",
+                model.TenantId, userId, userWasCreated, databaseTransactionStarted);
 
             // Execute compensating transactions in reverse order
-            await ExecuteInviteUserCompensatingTransactionsAsync(invitedUserId, model.TenantId, databaseTransactionStarted);
+            await ExecuteInviteUserCompensatingTransactionsAsync(userId, userWasCreated, model.TenantId, databaseTransactionStarted);
 
             throw;
         }
     }
+
+ 
 
     /// <summary>
     /// Executes compensating transactions for tenant creation rollback
@@ -154,11 +210,12 @@ public class TenantOrchestrationService : ITenantOrchestrationService
     /// Executes compensating transactions for user invitation rollback
     /// </summary>
     private async Task ExecuteInviteUserCompensatingTransactionsAsync(
-        string? invitedUserId,
+        string? userId,
+        bool userWasCreated,
         string tenantId,
         bool databaseTransactionStarted)
     {
-        // Compensate Step 2: Rollback database transaction
+        // Compensate Step 3: Rollback database transaction
         if (databaseTransactionStarted)
         {
             try
@@ -173,18 +230,33 @@ public class TenantOrchestrationService : ITenantOrchestrationService
             }
         }
 
-        // Compensate Step 1: Remove user from organization and delete from Keycloak
-        if (invitedUserId != null)
+        // Compensate Step 2: Remove user from organization
+        if (userId != null)
         {
             try
             {
-                _logger.LogWarning("Compensating transaction: Removing user {UserId} from tenant {TenantId}", invitedUserId, tenantId);
-                await _kcOrganisationService.RemoveUserFromOrganisationAsync(invitedUserId, tenantId);
+                _logger.LogWarning("Compensating transaction: Removing user {UserId} from tenant {TenantId}", userId, tenantId);
+                await _kcOrganisationService.RemoveUserFromOrganisationAsync(userId, tenantId);
                 _logger.LogInformation("User removed from tenant successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to remove user {UserId} from tenant {TenantId}", invitedUserId, tenantId);
+                _logger.LogError(ex, "Failed to remove user {UserId} from tenant {TenantId}", userId, tenantId);
+            }
+        }
+
+        // Compensate Step 1: Delete user from Keycloak (only if we created it in this saga)
+        if (userWasCreated && userId != null)
+        {
+            try
+            {
+                _logger.LogWarning("Compensating transaction: Deleting user {UserId} from Keycloak", userId);
+                await _kcUserService.DeleteUserAsync(userId);
+                _logger.LogInformation("User deleted from Keycloak successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete user {UserId} from Keycloak", userId);
             }
         }
     }
@@ -239,9 +311,9 @@ public class TenantOrchestrationService : ITenantOrchestrationService
     }
 
     /// <summary>
-    /// Persists invited user to database with tenant relationship
+    /// Persists invited user to database with tenant relationship and user profile
     /// </summary>
-    private async Task PersistInvitedUserToDatabaseAsync(string keycloakUserId, InviteUserModel model)
+    private async Task PersistInvitedUserToDatabaseAsync(UserRepresentation userRepresentation, InviteUserModel model)
     {
         // Look up the pre-seeded Keycloak identity provider
         var keycloakProvider = await _unitOfWork.IdentityProviders.GetByNameAsync("Keycloak");
@@ -251,10 +323,10 @@ public class TenantOrchestrationService : ITenantOrchestrationService
         }
 
         // Check if user already exists
-        var existingUserExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(keycloakUserId, keycloakProvider.Id);
+        var existingUserExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(userRepresentation.Id, keycloakProvider.Id);
         if (existingUserExternalIdentity != null)
         {
-            _logger.LogWarning("User with Keycloak ID {UserId} already exists in database. Skipping creation.", keycloakUserId);
+            _logger.LogWarning("User with Keycloak ID {UserId} already exists in database. Skipping creation.", userRepresentation.Id);
             return;
         }
 
@@ -289,7 +361,7 @@ public class TenantOrchestrationService : ITenantOrchestrationService
             ProviderId = keycloakProvider.Id,
             EntityTypeId = ExternalIdentityEntityTypeIds.User,
             EntityId = userId,
-            ExternalIdentifier = keycloakUserId
+            ExternalIdentifier = userRepresentation.Id
         };
         await _unitOfWork.ExternalIdentities.AddAsync(userExternalIdentity);
 
@@ -314,5 +386,22 @@ public class TenantOrchestrationService : ITenantOrchestrationService
             }
         };
         await _unitOfWork.TenantUsers.AddAsync(tenantUser);
+
+        // Create UserProfile with the user's name from Keycloak
+        var userProfile = new UserProfile
+        {
+            FirstName = userRepresentation.FirstName ?? string.Empty,
+            LastName = userRepresentation.LastName ?? string.Empty,
+            StatusId = activeStatus.Id
+        };
+        await _unitOfWork.UserProfiles.AddAsync(userProfile);
+
+        // Create TenantUserProfile linking the profile to this tenant-user relationship
+        var tenantUserProfile = new TenantUserProfile
+        {
+            TenantUserId = tenantUser.Id,
+            UserProfileId = userProfile.Id
+        };
+        await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
     }
 }

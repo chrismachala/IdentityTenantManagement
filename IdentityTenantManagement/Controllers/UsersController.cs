@@ -67,30 +67,32 @@ public class UsersController : ControllerBase
         return Ok(new {message="User updated successfully"});
     }
 
-    [HttpDelete("{userId}")]
-    [RequirePermission("delete-users")]
+    // [HttpDelete("{userId}")]
+    // [RequirePermission("delete-users")]
+    // [Obsolete("Use DELETE /tenants/{tenantId}/users/{userId} instead. This endpoint is deprecated and will be removed in a future version.")]
     public async Task<IActionResult> DeleteUser(string userId)
     {
+        // Legacy endpoint - redirects to new soft-delete logic
         try
         {
-            var callingUserId = User.FindFirst("user_id")?.Value;
             var tenantId = User.FindFirst("tenant_id")?.Value;
 
-            if (string.IsNullOrEmpty(callingUserId) || string.IsNullOrEmpty(tenantId))
+            if (string.IsNullOrEmpty(tenantId))
             {
-                return Unauthorized(new { message = "User identity or tenant context not found" });
+                return Unauthorized(new { message = "Tenant context not found" });
             }
 
-            await _userOrchestrationService.DeleteUserAsync(userId, callingUserId, tenantId);
-            return Ok(new { message = "User deleted successfully" });
+            if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(tenantId, out var tenantGuid))
+            {
+                return BadRequest(new { message = "Invalid user ID or tenant ID format" });
+            }
+
+            await _userService.DeactivateUserInTenantAsync(tenantGuid, userGuid);
+            return Ok(new { message = "User soft-deleted successfully. Use the reactivation endpoint to restore access." });
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Forbid();
         }
         catch (Exception ex)
         {

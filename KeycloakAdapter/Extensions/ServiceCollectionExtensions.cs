@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IKCUserService, KCUserService>();
         services.AddScoped<IKCAuthenticationService, KCAuthenticationService>();
         services.AddScoped<IKCEventsService, KCEventsService>();
+        services.AddScoped<IKeycloakSessionService, KeycloakSessionService>();
 
         return services;
     }

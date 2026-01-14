@@ -10,4 +10,7 @@ public class TenantUserProfile
     public UserProfile UserProfile { get; set; } = default!;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Tenant-specific inactive timestamp
+    public DateTime? InactiveAt { get; set; }
 }

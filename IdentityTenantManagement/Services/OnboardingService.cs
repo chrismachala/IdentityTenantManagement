@@ -41,20 +41,35 @@ public class OnboardingService : IOnboardingService
             model.CreateUserModel.Email, model.CreateTenantModel.Name);
 
         // Track saga state for compensating transactions
-        string? createdUserId = null;
+        string? userId = null;
+        bool userWasCreated = false;
         string? createdOrgId = null;
         bool userLinkedToOrg = false;
         bool databaseTransactionStarted = false;
 
         try
         {
-            // Step 1: Create user in Keycloak
-            _logger.LogInformation("Saga Step 1: Creating user in Keycloak");
-            await _kcUserService.CreateUserAsync(model.CreateUserModel);
+            // Step 1: Get or create user in Keycloak
+            _logger.LogInformation("Saga Step 1: Getting or creating user in Keycloak");
+            var existingUser = await _kcUserService.TryGetUserByEmailAsync(model.CreateUserModel.Email);
+            UserRepresentation userRepresentation;
 
-            UserRepresentation userRepresentation = await _kcUserService.GetUserByEmailAsync(model.CreateUserModel.Email);
-            createdUserId = userRepresentation.Id;
-            _logger.LogInformation("Saga Step 1: User created successfully with ID {UserId}", createdUserId);
+            if (existingUser != null)
+            {
+                _logger.LogInformation("User already exists with email: {Email}, using existing user", model.CreateUserModel.Email);
+                userRepresentation = existingUser;
+                userWasCreated = false;
+            }
+            else
+            {
+                _logger.LogInformation("User does not exist, creating new user: {Email}", model.CreateUserModel.Email);
+                await _kcUserService.CreateUserAsync(model.CreateUserModel);
+                userRepresentation = await _kcUserService.GetUserByEmailAsync(model.CreateUserModel.Email);
+                userWasCreated = true;
+            }
+
+            userId = userRepresentation.Id;
+            _logger.LogInformation("Saga Step 1: User retrieved/created successfully with ID {UserId}", userId);
 
             // Step 2: Create organization in Keycloak
             _logger.LogInformation("Saga Step 2: Creating organisation in Keycloak");
@@ -65,7 +80,7 @@ public class OnboardingService : IOnboardingService
             _logger.LogInformation("Saga Step 2: Organisation created successfully with ID {OrgId}", createdOrgId);
 
             // Step 3: Link user to organization
-            _logger.LogInformation("Saga Step 3: Linking user {UserId} to organisation {OrgId}", createdUserId, createdOrgId);
+            _logger.LogInformation("Saga Step 3: Linking user {UserId} to organisation {OrgId}", userId, createdOrgId);
             UserTenantModel orgUser = new UserTenantModel
             {
                 UserId = userRepresentation.Id,
@@ -88,11 +103,11 @@ public class OnboardingService : IOnboardingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Saga failed. Starting compensating transactions. State: UserId={UserId}, OrgId={OrgId}, UserLinked={UserLinked}, DbTransaction={DbTransaction}",
-                createdUserId, createdOrgId, userLinkedToOrg, databaseTransactionStarted);
+            _logger.LogError(ex, "Saga failed. Starting compensating transactions. State: UserId={UserId}, UserWasCreated={UserWasCreated}, OrgId={OrgId}, UserLinked={UserLinked}, DbTransaction={DbTransaction}",
+                userId, userWasCreated, createdOrgId, userLinkedToOrg, databaseTransactionStarted);
 
             // Execute compensating transactions in reverse order
-            await ExecuteCompensatingTransactionsAsync(createdUserId, createdOrgId, userLinkedToOrg, databaseTransactionStarted);
+            await ExecuteCompensatingTransactionsAsync(userId, userWasCreated, createdOrgId, userLinkedToOrg, databaseTransactionStarted);
 
             throw;
         }
@@ -102,7 +117,8 @@ public class OnboardingService : IOnboardingService
     /// Executes compensating transactions to rollback Keycloak changes
     /// </summary>
     private async Task ExecuteCompensatingTransactionsAsync(
-        string? createdUserId,
+        string? userId,
+        bool userWasCreated,
         string? createdOrgId,
         bool userLinkedToOrg,
         bool databaseTransactionStarted)
@@ -123,17 +139,17 @@ public class OnboardingService : IOnboardingService
         }
 
         // Compensate Step 3: Remove user from organisation
-        if (userLinkedToOrg && createdUserId != null && createdOrgId != null)
+        if (userLinkedToOrg && userId != null && createdOrgId != null)
         {
             try
             {
-                _logger.LogWarning("Compensating transaction: Removing user {UserId} from organisation {OrgId}", createdUserId, createdOrgId);
-                await _kcOrganisationService.RemoveUserFromOrganisationAsync(createdUserId, createdOrgId);
+                _logger.LogWarning("Compensating transaction: Removing user {UserId} from organisation {OrgId}", userId, createdOrgId);
+                await _kcOrganisationService.RemoveUserFromOrganisationAsync(userId, createdOrgId);
                 _logger.LogInformation("User removed from organisation successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to remove user {UserId} from organisation {OrgId}", createdUserId, createdOrgId);
+                _logger.LogError(ex, "Failed to remove user {UserId} from organisation {OrgId}", userId, createdOrgId);
             }
         }
 
@@ -152,18 +168,18 @@ public class OnboardingService : IOnboardingService
             }
         }
 
-        // Compensate Step 1: Delete user
-        if (createdUserId != null)
+        // Compensate Step 1: Delete user (only if we created it in this saga)
+        if (userWasCreated && userId != null)
         {
             try
             {
-                _logger.LogWarning("Compensating transaction: Deleting user {UserId}", createdUserId);
-                await _kcUserService.DeleteUserAsync(createdUserId);
+                _logger.LogWarning("Compensating transaction: Deleting user {UserId}", userId);
+                await _kcUserService.DeleteUserAsync(userId);
                 _logger.LogInformation("User deleted successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to delete user {UserId}", createdUserId);
+                _logger.LogError(ex, "Failed to delete user {UserId}", userId);
             }
         }
     }

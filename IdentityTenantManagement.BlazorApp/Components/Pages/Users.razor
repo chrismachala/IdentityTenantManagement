@@ -14,8 +14,14 @@
             <h2 style="margin: 0 0 0.5rem 0;">Manage Users</h2>
             <p style="margin: 0; color: var(--gray-600);">View, edit, and manage users in your organization</p>
         </div>
-        <div>
- 
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="showInactiveToggle" @bind="showInactive" @bind:event="oninput" @onchange="OnShowInactiveChanged">
+                <label class="form-check-label" for="showInactiveToggle">
+                    Show inactive users
+                </label>
+            </div>
+
             @if (hasInvitePermission)
             {
                 <button type="button" class="btn btn-primary" @onclick="ShowInviteModal" @onclick:stopPropagation="true">
@@ -93,13 +99,19 @@
                                 <td>@user.Email</td>
                                 <td>@user.Username</td>
                                 <td>
-                                    @if (user.Enabled == true)
+                                    @if (user.IsActive)
                                     {
                                         <span class="badge bg-success">Active</span>
                                     }
                                     else
                                     {
                                         <span class="badge bg-secondary">Inactive</span>
+                                        @if (user.InactiveAt.HasValue)
+                                        {
+                                            <span class="text-muted small" style="display: block; margin-top: 0.25rem;">
+                                                Since @user.InactiveAt.Value.ToString("MMM dd, yyyy")
+                                            </span>
+                                        }
                                     }
                                 </td>
                                 @if (hasUpdatePermission || hasDeletePermission)
@@ -112,10 +124,10 @@
                                                     Edit
                                                 </button>
                                             }
-                                            @if (hasDeletePermission)
+                                            @if (hasDeletePermission && user.IsActive)
                                             {
                                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ShowDeleteModal(user)">
-                                                    Delete
+                                                    Remove
                                                 </button>
                                             }
                                         </div>
@@ -186,12 +198,12 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Delete User</h5>
+                    <h5 class="modal-title">Remove User from Organization</h5>
                     <button type="button" class="btn-close" @onclick="CloseDeleteModal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to delete <strong>@selectedUser.FirstName @selectedUser.LastName</strong>?</p>
-                    <p class="text-danger">This action cannot be undone.</p>
+                    <p>Are you sure you want to remove <strong>@selectedUser.FirstName @selectedUser.LastName</strong> from this organization?</p>
+                    <p class="text-warning">The user will be deactivated and all their sessions will be terminated. This action can be reversed by reactivating the user.</p>
                     @if (!string.IsNullOrEmpty(modalErrorMessage))
                     {
                         <div class="alert alert-danger">@modalErrorMessage</div>
@@ -203,11 +215,11 @@
                         @if (isDeleting)
                         {
                             <span class="spinner-border spinner-border-sm" role="status"></span>
-                            <span>Deleting...</span>
+                            <span>Removing...</span>
                         }
                         else
                         {
-                            <span>Delete</span>
+                            <span>Remove</span>
                         }
                     </button>
                 </div>
@@ -231,6 +243,10 @@
                     <div class="mb-3">
                         <label class="form-label">Email *</label>
                         <input type="email" class="form-control" @bind="inviteEmail" placeholder="user@example.com" required />
+                        <label class="form-label">First Name *</label>
+                        <input type="text" class="form-control" @bind="inviteFname" placeholder="Jane" required />
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" class="form-control" @bind="inviteLname" placeholder="Doe" required />
                         <div class="form-text small">The user will receive an invitation email to complete their registration.</div>
                     </div>
                     @if (!string.IsNullOrEmpty(modalErrorMessage))
@@ -262,9 +278,10 @@
 }
 
 @code {
-    private List<UserRepresentation>? users;
+    private List<UserSummaryDto>? users;
     private bool isLoading = true;
     private string? errorMessage;
+    private bool showInactive = false;
 
     // Permissions
     private bool hasInvitePermission = false;
@@ -274,7 +291,7 @@
 
     // Edit modal
     private bool showEditModal = false;
-    private UserRepresentation? selectedUser;
+    private UserSummaryDto? selectedUser;
     private string editFirstName = "";
     private string editLastName = "";
     private string editEmail = "";
@@ -287,6 +304,8 @@
     // Invite modal
     private bool showInviteModal = false;
     private string inviteEmail = "";
+    private string inviteFname = "";
+    private string inviteLname = "";
     private bool isInviting = false;
     private string? inviteSuccessMessage;
 
@@ -346,11 +365,13 @@
                 return;
             }
 
-            var response = await Http.GetAsync($"api/v1.0/Users/organization/{organizationId}");
+            // Use the new paginated API endpoint with includeInactive parameter
+            var response = await Http.GetAsync($"api/v1.0/tenants/{organizationId}/users?includeInactive={showInactive}&page=1&pageSize=100");
 
             if (response.IsSuccessStatusCode)
             {
-                users = await response.Content.ReadFromJsonAsync<List<UserRepresentation>>();
+                var paginatedResponse = await response.Content.ReadFromJsonAsync<PaginatedUsersResponse>();
+                users = paginatedResponse?.Users;
             }
             else
             {
@@ -367,6 +388,11 @@
         }
     }
 
+    private async Task OnShowInactiveChanged()
+    {
+        await LoadUsers();
+    }
+
     private string GetInitials(string? firstName, string? lastName)
     {
         var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
@@ -374,7 +400,7 @@
         return first + last;
     }
 
-    private void ShowEditModal(UserRepresentation user)
+    private void ShowEditModal(UserSummaryDto user)
     {
         selectedUser = user;
         editFirstName = user.FirstName ?? "";
@@ -407,7 +433,7 @@
                 Email = editEmail
             };
 
-            var response = await Http.PutAsJsonAsync($"api/v1.0/Users/{selectedUser.Id}", updateModel);
+            var response = await Http.PutAsJsonAsync($"api/v1.0/Users/{selectedUser.UserId}", updateModel);
 
             if (response.IsSuccessStatusCode)
             {
@@ -429,7 +455,7 @@
         }
     }
 
-    private void ShowDeleteModal(UserRepresentation user)
+    private void ShowDeleteModal(UserSummaryDto user)
     {
         selectedUser = user;
         modalErrorMessage = null;
@@ -452,7 +478,15 @@
             isDeleting = true;
             modalErrorMessage = null;
 
-            var response = await Http.DeleteAsync($"api/v1.0/Users/{selectedUser.Id}");
+            var organizationId = AuthService.CurrentState.UserInfo?.OrganizationId;
+
+            if (string.IsNullOrEmpty(organizationId))
+            {
+                modalErrorMessage = "Organization ID not found";
+                return;
+            }
+
+            var response = await Http.DeleteAsync($"api/v1.0/tenants/{organizationId}/users/{selectedUser.UserId}");
 
             if (response.IsSuccessStatusCode)
             {
@@ -461,12 +495,12 @@
             }
             else
             {
-                modalErrorMessage = $"Failed to delete user: {response.StatusCode}";
+                modalErrorMessage = $"Failed to deactivate user: {response.StatusCode}";
             }
         }
         catch (Exception ex)
         {
-            modalErrorMessage = $"Error deleting user: {ex.Message}";
+            modalErrorMessage = $"Error deactivating user: {ex.Message}";
         }
         finally
         {
@@ -477,6 +511,8 @@
     private void ShowInviteModal()
     {
         inviteEmail = "";
+        inviteFname = "";
+        inviteLname = "";
         modalErrorMessage = null;
         inviteSuccessMessage = null;
         showInviteModal = true;
@@ -486,6 +522,8 @@
     {
         showInviteModal = false;
         inviteEmail = "";
+        inviteFname = "";
+        inviteLname = "";
         modalErrorMessage = null;
         inviteSuccessMessage = null;
     }
@@ -498,10 +536,20 @@
             modalErrorMessage = null;
             inviteSuccessMessage = null;
 
-            // Validate email
+            // Validation
             if (string.IsNullOrWhiteSpace(inviteEmail))
             {
                 modalErrorMessage = "Email is required";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(inviteFname))
+            {
+                modalErrorMessage = "First Name is required";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(inviteLname))
+            {
+                modalErrorMessage = "Last Name is required";
                 return;
             }
 
@@ -516,7 +564,9 @@
             var inviteModel = new
             {
                 TenantId = organizationId,
-                Email = inviteEmail
+                Email = inviteEmail,
+                FirstName = inviteFname,
+                LastName = inviteLname
             };
 
             var response = await Http.PostAsJsonAsync("api/v1.0/Tenants/InviteUser", inviteModel);
@@ -547,5 +597,30 @@
     public void Dispose()
     {
         AuthService.OnAuthenticationStateChanged -= OnAuthStateChanged;
+    }
+
+    // DTOs matching the API response
+    public class UserSummaryDto
+    {
+        public Guid UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public DateTime? InactiveAt { get; set; }
+        public DateTime JoinedAt { get; set; }
+        public List<string> Roles { get; set; } = new();
+    }
+
+    public class PaginatedUsersResponse
+    {
+        public List<UserSummaryDto> Users { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+        public bool HasNextPage => Page < TotalPages;
+        public bool HasPreviousPage => Page > 1;
     }
 }
