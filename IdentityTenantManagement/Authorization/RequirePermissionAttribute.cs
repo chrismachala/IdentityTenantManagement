@@ -33,17 +33,30 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
             return;
         }
 
-        // Get user ID and tenant ID from claims
-        var userIdClaim = context.HttpContext.User.FindFirst("user_id")?.Value;
-        var tenantIdClaim = context.HttpContext.User.FindFirst("tenant_id")?.Value;
+        // Get user ID from claims first, then fall back to custom header
+        var userIdValue = context.HttpContext.User.FindFirst("user_id")?.Value
+            ?? context.HttpContext.User.FindFirst("sub")?.Value;
 
-        if (string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(tenantIdClaim))
+        if (string.IsNullOrEmpty(userIdValue))
+        {
+            userIdValue = context.HttpContext.Request.Headers["X-User-Id"].FirstOrDefault();
+        }
+
+        // Get tenant ID from claims first, then fall back to custom header
+        var tenantIdValue = context.HttpContext.User.FindFirst("tenant_id")?.Value;
+
+        if (string.IsNullOrEmpty(tenantIdValue))
+        {
+            tenantIdValue = context.HttpContext.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+        }
+
+        if (string.IsNullOrEmpty(userIdValue) || string.IsNullOrEmpty(tenantIdValue))
         {
             context.Result = new UnauthorizedResult();
             return;
         }
 
-        if (!Guid.TryParse(userIdClaim, out var userId) || !Guid.TryParse(tenantIdClaim, out var tenantId))
+        if (!Guid.TryParse(userIdValue, out var userId) || !Guid.TryParse(tenantIdValue, out var tenantId))
         {
             context.Result = new UnauthorizedResult();
             return;

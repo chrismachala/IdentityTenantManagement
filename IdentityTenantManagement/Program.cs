@@ -75,9 +75,7 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddKeycloakIntegration(builder.Configuration);
 builder.Services.AddApplicationServices();
-
-// Register background services
-builder.Services.AddHostedService<RegistrationProcessorService>();
+ 
 
 var conString = builder.Configuration.GetConnectionString("OnboardingDatabase") ??
                 throw new InvalidOperationException("Connection string 'OnboardingDatabase'" +

@@ -133,4 +133,58 @@ public class TenantUserRepository : ITenantUserRepository
             .Where(tu => tu.TenantId == tenantId && tu.TenantUserRoles.Any(tur => tur.RoleId == roleId))
             .CountAsync();
     }
+
+    public async Task<(IEnumerable<TenantUser> Users, int TotalCount)> GetUsersAsync(
+        Guid tenantId,
+        bool includeInactive = false,
+        int page = 1,
+        int pageSize = 50)
+    {
+        // Get the inactive status ID for filtering
+        var inactiveStatus = await _context.UserStatusTypes
+            .FirstOrDefaultAsync(ust => ust.Name == "inactive");
+
+        var inactiveStatusId = inactiveStatus?.Id;
+
+        // Build the base query
+        var query = _context.TenantUsers
+            .Include(tu => tu.User)
+            .Include(tu => tu.TenantUserRoles)
+                .ThenInclude(tur => tur.Role)
+            .Where(tu => tu.TenantId == tenantId);
+
+        // Join with TenantUserProfile and UserProfile to filter by status
+        var usersQuery = query
+            .Join(
+                _context.TenantUserProfiles,
+                tu => tu.Id,
+                tup => tup.TenantUserId,
+                (tu, tup) => new { TenantUser = tu, TenantUserProfile = tup })
+            .Join(
+                _context.UserProfiles,
+                x => x.TenantUserProfile.UserProfileId,
+                up => up.Id,
+                (x, up) => new { x.TenantUser, x.TenantUserProfile, UserProfile = up });
+
+        // Apply inactive filter if requested
+        if (!includeInactive && inactiveStatusId.HasValue)
+        {
+            usersQuery = usersQuery.Where(x => x.UserProfile.StatusId != inactiveStatusId.Value);
+        }
+
+        // Get total count before pagination
+        var totalCount = await usersQuery.CountAsync();
+
+        // Apply pagination
+        var skip = (page - 1) * pageSize;
+        var users = await usersQuery
+            .OrderBy(x => x.UserProfile.FirstName)
+            .ThenBy(x => x.UserProfile.LastName)
+            .Skip(skip)
+            .Take(pageSize)
+            .Select(x => x.TenantUser)
+            .ToListAsync();
+
+        return (users, totalCount);
+    }
 }

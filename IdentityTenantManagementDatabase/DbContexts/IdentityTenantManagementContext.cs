@@ -27,6 +27,8 @@ public class IdentityTenantManagementContext : DbContext
     public DbSet<RegistrationFailureLog> RegistrationFailureLogs => Set<RegistrationFailureLog>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<TenantUserProfile> TenantUserProfiles => Set<TenantUserProfile>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<DeletionPolicyConfiguration> DeletionPolicyConfigurations => Set<DeletionPolicyConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -374,6 +376,60 @@ public class IdentityTenantManagementContext : DbContext
         modelBuilder.Entity<TenantUserProfile>()
             .HasIndex(tup => tup.TenantUserId)
             .IsUnique();
+
+        // Configure AuditLog relationships
+        modelBuilder.Entity<AuditLog>()
+            .HasOne(al => al.ActorUser)
+            .WithMany()
+            .HasForeignKey(al => al.ActorUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AuditLog>()
+            .HasOne(al => al.Tenant)
+            .WithMany()
+            .HasForeignKey(al => al.TenantId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Configure AuditLog string length constraints
+        modelBuilder.Entity<AuditLog>()
+            .Property(al => al.Action)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        modelBuilder.Entity<AuditLog>()
+            .Property(al => al.ResourceType)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        modelBuilder.Entity<AuditLog>()
+            .Property(al => al.ResourceId)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // Configure User string length constraints
+        modelBuilder.Entity<User>()
+            .Property(u => u.DeletionFailedReason)
+            .HasMaxLength(1000);
+
+        // Indexes for User soft-delete fields
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.GloballyInactiveAt)
+            .HasFilter("[GloballyInactiveAt] IS NOT NULL");
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.DeletionFailedAt)
+            .HasFilter("[DeletionFailedAt] IS NOT NULL");
+
+        // Index for TenantUserProfile soft-delete field
+        modelBuilder.Entity<TenantUserProfile>()
+            .HasIndex(tup => tup.InactiveAt)
+            .HasFilter("[InactiveAt] IS NOT NULL");
+
+        // Configure DeletionPolicyConfiguration string length constraint
+        modelBuilder.Entity<DeletionPolicyConfiguration>()
+            .Property(dpc => dpc.UpdatedBy)
+            .HasMaxLength(200)
+            .IsRequired();
     }
 
 }

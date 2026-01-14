@@ -10,29 +10,39 @@ builder.Services.AddRazorComponents()
 // Configure HttpClient for API calls
 var apiBaseUrl = builder.Configuration.GetValue<string>("ApiSettings:BaseUrl") ?? "https://localhost:5280";
 
-// Register default HttpClient with BaseAddress for general use
-builder.Services.AddHttpClient(string.Empty, client =>
-{
-    client.BaseAddress = new Uri(apiBaseUrl);
-});
-
 builder.Services.AddHttpClient<OnboardingApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 });
 
-// Register named HttpClient for authentication
+// Register named HttpClient for authentication (used by AuthenticationService)
 builder.Services.AddHttpClient("AuthenticationApi", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 });
 
-// Register authentication service as singleton to maintain state
+// Register authentication service as Singleton to maintain state across the Blazor circuit
+// Note: For multi-user production, consider using AuthenticationStateProvider instead
 builder.Services.AddSingleton<AuthenticationService>(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var httpClient = httpClientFactory.CreateClient("AuthenticationApi");
     return new AuthenticationService(httpClient);
+});
+
+// Register the HttpClient that pages will use via @inject HttpClient
+// This HttpClient includes the AuthenticatedHttpClientHandler which adds auth headers
+builder.Services.AddScoped<HttpClient>(sp =>
+{
+    var authService = sp.GetRequiredService<AuthenticationService>();
+    var handler = new AuthenticatedHttpClientHandler(authService)
+    {
+        InnerHandler = new HttpClientHandler()
+    };
+    return new HttpClient(handler)
+    {
+        BaseAddress = new Uri(apiBaseUrl)
+    };
 });
 
 var app = builder.Build();

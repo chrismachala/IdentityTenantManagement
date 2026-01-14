@@ -12,12 +12,14 @@ public static class ServiceCollectionExtensions
         // Register application services
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IUserRoleService, UserRoleService>();
         services.AddScoped<PermissionService>();
         services.AddScoped<IUserService, UserService>();
 
         // Register orchestration services
         services.AddScoped<IUserOrchestrationService, UserOrchestrationService>();
         services.AddScoped<ITenantOrchestrationService, TenantOrchestrationService>();
+        services.AddScoped<IAuthenticationOrchestrationService, AuthenticationOrchestrationService>();
 
         return services;
     }

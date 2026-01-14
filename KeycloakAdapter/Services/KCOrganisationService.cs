@@ -11,8 +11,7 @@ public interface IKCOrganisationService
 {
     Task CreateOrgAsync(CreateTenantModel model);
     Task<OrganizationRepresentation> GetOrganisationByDomain(string domain);
-    Task AddUserToOrganisationAsync(UserTenantModel model);
-    Task<string> InviteUserToOrganisationAsync(InviteUserModel model);
+    Task AddUserToOrganisationAsync(UserTenantModel model); 
     Task DeleteOrganisationAsync(string orgId);
     Task RemoveUserFromOrganisationAsync(string userId, string orgId);
     Task<List<OrganizationRepresentation>> GetAllOrganisationsAsync();
@@ -65,46 +64,46 @@ public class KCOrganisationService : KeycloakServiceBase, IKCOrganisationService
     {
         Logger.LogInformation("Adding user {UserId} to organisation {OrgId}", userTenantModel.UserId, userTenantModel.TenantId);
 
-        var endpoint = BuildEndpoint($"organizations/{userTenantModel.TenantId}/members/invite-existing-user");
+        var endpoint = BuildEndpoint($"organizations/{userTenantModel.TenantId}/members");
 
-        await PostFormAsync(endpoint, new { id = userTenantModel.UserId });
+        await PostJsonAsync(endpoint, userTenantModel.UserId );
 
         Logger.LogInformation("Successfully added user {UserId} to organisation {OrgId}", userTenantModel.UserId, userTenantModel.TenantId);
     }
 
-    public async Task<string> InviteUserToOrganisationAsync(InviteUserModel model)
-    {
-        Logger.LogInformation("Inviting user {Email} to organisation {OrgId}", model.Email, model.TenantId);
-
-        var endpoint = BuildEndpoint($"organizations/{model.TenantId}/members/invite-user");
-
-        var inviteData = new Dictionary<string, string>();
-
-        if (!string.IsNullOrEmpty(model.Email))
-            inviteData.Add("email", model.Email);
-
-        if (!string.IsNullOrEmpty(model.FirstName))
-            inviteData.Add("firstName", model.FirstName);
-
-        if (!string.IsNullOrEmpty(model.LastName))
-            inviteData.Add("lastName", model.LastName);
-
-        var response = await PostFormAsync(endpoint, inviteData);
-
-        // Extract user ID from Location header
-        // Keycloak returns the user ID in the Location header: .../users/{userId}
-        var locationHeader = response.Headers.Location?.ToString();
-        if (string.IsNullOrEmpty(locationHeader))
-        {
-            throw new KeycloakException("Failed to get user ID from invite response - Location header not found", response.StatusCode, "");
-        }
-
-        var userId = locationHeader.Split('/').Last();
-
-        Logger.LogInformation("Successfully invited user {Email} to organisation {OrgId}, user ID: {UserId}", model.Email, model.TenantId, userId);
-
-        return userId;
-    }
+    // public async Task<string> InviteUserToOrganisationAsync(InviteUserModel model)
+    // {
+    //     Logger.LogInformation("Inviting user {Email} to organisation {OrgId}", model.Email, model.TenantId);
+    //
+    //     var endpoint = BuildEndpoint($"organizations/{model.TenantId}/members/invite-user");
+    //
+    //     var inviteData = new Dictionary<string, string>();
+    //
+    //     if (!string.IsNullOrEmpty(model.Email))
+    //         inviteData.Add("email", model.Email);
+    //
+    //     if (!string.IsNullOrEmpty(model.FirstName))
+    //         inviteData.Add("firstName", model.FirstName);
+    //
+    //     if (!string.IsNullOrEmpty(model.LastName))
+    //         inviteData.Add("lastName", model.LastName);
+    //
+    //     var response = await PostFormAsync(endpoint, inviteData);
+    //
+    //     // Extract user ID from Location header
+    //     // Keycloak returns the user ID in the Location header: .../users/{userId}
+    //     var locationHeader = response.Headers.Location?.ToString();
+    //     if (string.IsNullOrEmpty(locationHeader))
+    //     {
+    //         throw new KeycloakException("Failed to get user ID from invite response - Location header not found", response.StatusCode, "");
+    //     }
+    //
+    //     var userId = locationHeader.Split('/').Last();
+    //
+    //     Logger.LogInformation("Successfully invited user {Email} to organisation {OrgId}, user ID: {UserId}", model.Email, model.TenantId, userId);
+    //
+    //     return userId;
+    // }
 
     public async Task DeleteOrganisationAsync(string orgId)
     {
