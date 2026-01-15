@@ -13,6 +13,7 @@ namespace KeycloakAdapter.Services;
 public interface IKCAuthenticationService
 {
     Task<AuthenticationResponse> AuthenticateAsync(LoginModel loginModel);
+    Task<UserInfo?> GetUserInfoForOrganizationAsync(string accessToken, string organizationId);
 }
 
 public class KCAuthenticationService : IKCAuthenticationService
@@ -38,8 +39,7 @@ public class KCAuthenticationService : IKCAuthenticationService
     {
         try
         {
-            // Only log organization for privacy
-            _logger.LogInformation("Authentication attempt for organization {Organization}", loginModel.Organization);
+            _logger.LogInformation("Authentication attempt for email {Email}", loginModel.Email);
 
             // Always authenticate against the "Organisations" realm
             const string realm = "Organisations";
@@ -50,7 +50,7 @@ public class KCAuthenticationService : IKCAuthenticationService
                 new KeyValuePair<string, string>("grant_type", "password"),
                 new KeyValuePair<string, string>("client_id", _config.ClientId),
                 new KeyValuePair<string, string>("client_secret", _config.ClientSecret),
-                new KeyValuePair<string, string>("username", loginModel.Username),
+                new KeyValuePair<string, string>("username", loginModel.Email),
                 new KeyValuePair<string, string>("password", loginModel.Password),
                 new KeyValuePair<string, string>("scope", "openid profile email")
             });
@@ -60,7 +60,7 @@ public class KCAuthenticationService : IKCAuthenticationService
             if (!response.IsSuccessStatusCode)
             {
                 // Don't log error details or username for security
-                _logger.LogWarning("Authentication failed for organization {Organization}", loginModel.Organization);
+                _logger.LogWarning("Authentication failed for email {Email}", loginModel.Email);
 
                 return new AuthenticationResponse
                 {
@@ -76,21 +76,69 @@ public class KCAuthenticationService : IKCAuthenticationService
             var refreshToken = tokenResponse["refresh_token"]?.ToString();
             var expiresIn = tokenResponse["expires_in"]?.Value<int>() ?? 0;
 
-            // Get user info and verify organization membership
-            var userInfo = await GetUserInfoAsync(accessToken!, loginModel.Organization);
-
-            if (userInfo == null)
+            if (string.IsNullOrWhiteSpace(accessToken))
             {
-                _logger.LogWarning("User does not belong to organization {Organization}", loginModel.Organization);
-
+                _logger.LogWarning("Authentication response missing access token for email {Email}", loginModel.Email);
                 return new AuthenticationResponse
                 {
                     Success = false,
-                    ErrorMessage = "User does not have access to the specified organization"
+                    ErrorMessage = "Authentication failed"
                 };
             }
 
-            _logger.LogInformation("Successfully authenticated user for organization {Organization}", loginModel.Organization);
+            // Get user info and fetch organization memberships
+            var userInfo = await GetUserInfoAsync(accessToken);
+
+            if (userInfo == null)
+            {
+                return new AuthenticationResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Unable to retrieve user information"
+                };
+            }
+
+            var organizations = await GetOrganizationsForUserAsync(userInfo.UserId);
+
+            if (organizations.Count == 0)
+            {
+                _logger.LogWarning("No organizations found for user {UserId}", userInfo.UserId);
+                return new AuthenticationResponse
+                {
+                    Success = false,
+                    ErrorMessage = "No organizations found for this account"
+                };
+            }
+
+            var organizationInfos = organizations
+                .Where(org => !string.IsNullOrWhiteSpace(org.Id))
+                .Select(org => new OrganizationInfo
+                {
+                    Id = org.Id,
+                    Name = org.Name ?? string.Empty
+                })
+                .ToList();
+
+            if (organizationInfos.Count == 1)
+            {
+                var org = organizationInfos[0];
+                userInfo.OrganizationId = org.Id;
+                userInfo.Organization = org.Name;
+
+                _logger.LogInformation("Successfully authenticated user for organization {Organization}", org.Name);
+
+                return new AuthenticationResponse
+                {
+                    Success = true,
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken,
+                    ExpiresIn = expiresIn,
+                    UserInfo = userInfo,
+                    Organizations = organizationInfos
+                };
+            }
+
+            _logger.LogInformation("Authenticated user {UserId} with {Count} organizations", userInfo.UserId, organizationInfos.Count);
 
             return new AuthenticationResponse
             {
@@ -98,7 +146,9 @@ public class KCAuthenticationService : IKCAuthenticationService
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 ExpiresIn = expiresIn,
-                UserInfo = userInfo
+                UserInfo = userInfo,
+                RequiresOrganizationSelection = true,
+                Organizations = organizationInfos
             };
         }
         catch (Exception ex)
@@ -112,7 +162,35 @@ public class KCAuthenticationService : IKCAuthenticationService
         }
     }
 
-    private async Task<UserInfo?> GetUserInfoAsync(string accessToken, string organization)
+    public async Task<UserInfo?> GetUserInfoForOrganizationAsync(string accessToken, string organizationId)
+    {
+        var userInfo = await GetUserInfoAsync(accessToken);
+        if (userInfo == null)
+        {
+            return null;
+        }
+
+        var organization = await GetOrganizationByIdAsync(organizationId);
+        if (organization == null)
+        {
+            _logger.LogWarning("Organization {OrganizationId} not found", organizationId);
+            return null;
+        }
+
+        var isMember = await VerifyOrganizationMembershipByIdAsync(userInfo.UserId, organizationId);
+        if (!isMember)
+        {
+            _logger.LogWarning("User {UserId} is not a member of organization {OrganizationId}", userInfo.UserId, organizationId);
+            return null;
+        }
+
+        userInfo.OrganizationId = organizationId;
+        userInfo.Organization = organization.Name ?? string.Empty;
+
+        return userInfo;
+    }
+
+    private async Task<UserInfo?> GetUserInfoAsync(string accessToken)
     {
         try
         {
@@ -135,24 +213,6 @@ public class KCAuthenticationService : IKCAuthenticationService
 
             var userId = userInfoJson["sub"]?.ToString() ?? string.Empty;
 
-            // Get organization details
-            var org = await GetOrganizationByNameAsync(organization);
-
-            if (org == null)
-            {
-                _logger.LogWarning("Organization {Organization} not found", organization);
-                return null;
-            }
-
-            // Verify user belongs to the specified organization
-            var isMember = await VerifyOrganizationMembershipAsync(userId, organization);
-
-            if (!isMember)
-            {
-                _logger.LogWarning("User {UserId} is not a member of organization {Organization}", userId, organization);
-                return null;
-            }
-
             return new UserInfo
             {
                 UserId = userId,
@@ -160,8 +220,6 @@ public class KCAuthenticationService : IKCAuthenticationService
                 Email = userInfoJson["email"]?.ToString() ?? string.Empty,
                 FirstName = userInfoJson["given_name"]?.ToString() ?? string.Empty,
                 LastName = userInfoJson["family_name"]?.ToString() ?? string.Empty,
-                Organization = organization,
-                OrganizationId = org.Id
             };
         }
         catch (Exception ex)
@@ -171,25 +229,12 @@ public class KCAuthenticationService : IKCAuthenticationService
         }
     }
 
-    private async Task<bool> VerifyOrganizationMembershipAsync(string userId, string organizationName)
+    private async Task<List<OrganizationRepresentation>> GetOrganizationsForUserAsync(string userId)
     {
         try
         {
-            _logger.LogDebug("Verifying user {UserId} membership in organization {Organization}", userId, organizationName);
-
             const string realm = "Organisations";
-
-            // First, get the organization by name to get its ID
-            var org = await GetOrganizationByNameAsync(organizationName);
-
-            if (org == null)
-            {
-                _logger.LogWarning("Organization {Organization} not found", organizationName);
-                return false;
-            }
-
-            // Check if the user is a member of this organization
-            var endpoint = $"{_config.BaseUrl}/admin/realms/{realm}/organizations/{org.Id}/members/{userId}";
+            var endpoint = $"{_config.BaseUrl}/admin/realms/{realm}/organizations/members/{userId}/organizations";
 
             var adminRequest = await _requestHelper.CreateHttpRequestMessage(
                 HttpMethod.Get,
@@ -197,29 +242,35 @@ public class KCAuthenticationService : IKCAuthenticationService
                 null,
                 new Helpers.ContentBuilders.JsonContentBuilder());
 
-            var memberResponse = await _requestHelper.SendAsync(adminRequest);
+            var response = await _requestHelper.SendAsync(adminRequest);
+            var json = await response.Content.ReadAsStringAsync();
 
-            // If we get a successful response, the user is a member
-            return true;
+            return JsonSerializer.Deserialize<List<OrganizationRepresentation>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            }) ?? new List<OrganizationRepresentation>();
         }
         catch (KeycloakException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            _logger.LogWarning("User {UserId} is not a member of organization {Organization}", userId, organizationName);
-            return false;
+            return await GetOrganizationsForUserFallbackAsync(userId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error verifying organization membership for user {UserId}", userId);
-            return false;
+            _logger.LogError(ex, "Error getting organizations for user {UserId}", userId);
+            return new List<OrganizationRepresentation>();
         }
     }
 
-    private async Task<OrganizationRepresentation?> GetOrganizationByNameAsync(string organizationName)
+    private async Task<List<OrganizationRepresentation>> GetOrganizationsForUserFallbackAsync(string userId)
     {
         try
         {
             const string realm = "Organisations";
-            var query = HttpQueryCreator.BuildQueryForTenantSearchByName(organizationName);
+            var query = HttpQueryCreator.ToQueryString(new Dictionary<string, object?>
+            {
+                ["member"] = userId
+            });
             var endpoint = $"{_config.BaseUrl}/admin/realms/{realm}/organizations{query}";
 
             var adminRequest = await _requestHelper.CreateHttpRequestMessage(
@@ -231,17 +282,94 @@ public class KCAuthenticationService : IKCAuthenticationService
             var response = await _requestHelper.SendAsync(adminRequest);
             var json = await response.Content.ReadAsStringAsync();
 
-            var orgs = JsonSerializer.Deserialize<List<OrganizationRepresentation>>(json, new JsonSerializerOptions
+            var organizations = JsonSerializer.Deserialize<List<OrganizationRepresentation>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            }) ?? new List<OrganizationRepresentation>();
+
+            return await FilterOrganizationsByMembershipAsync(userId, organizations);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting organizations for user {UserId} via fallback", userId);
+            return new List<OrganizationRepresentation>();
+        }
+    }
+
+    private async Task<List<OrganizationRepresentation>> FilterOrganizationsByMembershipAsync(
+        string userId,
+        List<OrganizationRepresentation> organizations)
+    {
+        if (organizations.Count == 0)
+        {
+            return organizations;
+        }
+
+        var membershipChecks = organizations.Select(async org =>
+        {
+            var isMember = !string.IsNullOrWhiteSpace(org.Id) &&
+                await VerifyOrganizationMembershipByIdAsync(userId, org.Id);
+            return (org, isMember);
+        });
+
+        var results = await Task.WhenAll(membershipChecks);
+        return results.Where(result => result.isMember).Select(result => result.org).ToList();
+    }
+
+    private async Task<bool> VerifyOrganizationMembershipByIdAsync(string userId, string organizationId)
+    {
+        try
+        {
+            const string realm = "Organisations";
+            var endpoint = $"{_config.BaseUrl}/admin/realms/{realm}/organizations/{organizationId}/members/{userId}";
+
+            var adminRequest = await _requestHelper.CreateHttpRequestMessage(
+                HttpMethod.Get,
+                endpoint,
+                null,
+                new Helpers.ContentBuilders.JsonContentBuilder());
+
+            await _requestHelper.SendAsync(adminRequest);
+            return true;
+        }
+        catch (KeycloakException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            _logger.LogWarning("User {UserId} is not a member of organization {OrganizationId}", userId, organizationId);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying organization membership for user {UserId}", userId);
+            return false;
+        }
+    }
+
+    private async Task<OrganizationRepresentation?> GetOrganizationByIdAsync(string organizationId)
+    {
+        try
+        {
+            const string realm = "Organisations";
+            var endpoint = $"{_config.BaseUrl}/admin/realms/{realm}/organizations/{organizationId}";
+
+            var adminRequest = await _requestHelper.CreateHttpRequestMessage(
+                HttpMethod.Get,
+                endpoint,
+                null,
+                new Helpers.ContentBuilders.JsonContentBuilder());
+
+            var response = await _requestHelper.SendAsync(adminRequest);
+            var json = await response.Content.ReadAsStringAsync();
+
+            return JsonSerializer.Deserialize<OrganizationRepresentation>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
-
-            return orgs?.FirstOrDefault();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting organization {Organization}", organizationName);
+            _logger.LogError(ex, "Error getting organization {OrganizationId}", organizationId);
             return null;
         }
     }

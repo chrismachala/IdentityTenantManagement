@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddKeycloakIntegration(this IServiceCollection services, IConfiguration config)
     {
         services.Configure<KeycloakConfig>(config.GetSection("KeycloakConfig"));
-
+    
         services.AddHttpClient<IKCRequestHelper, KCRequestHelper>();
         services.AddScoped<IKCRequestHelper, KCRequestHelper>();
         services.AddScoped<IKCOrganisationService, KCOrganisationService>();
@@ -19,7 +19,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IKCAuthenticationService, KCAuthenticationService>();
         services.AddScoped<IKCEventsService, KCEventsService>();
         services.AddScoped<IKeycloakSessionService, KeycloakSessionService>();
-
+    
         return services;
     }
+ 
+ 
 }

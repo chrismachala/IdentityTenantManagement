@@ -1,4 +1,6 @@
+@using IdentityTenantManagement.BlazorApp.Services
 @inherits LayoutComponentBase
+@inject AuthenticationService AuthService
 
 <div class="page">
     <div class="sidebar">
@@ -11,6 +13,19 @@
         </article>
     </main>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await AuthService.EnsureStateLoadedAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+}
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

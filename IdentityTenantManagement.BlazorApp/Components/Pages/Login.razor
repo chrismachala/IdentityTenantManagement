@@ -9,50 +9,41 @@
 <div style="display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 4rem); padding: 2rem;">
     <div style="width: 100%; max-width: 450px;">
         <div class="card" style="box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);">
-                <div class="card-body" style="padding: 2.5rem;">
-                    <div class="text-center mb-4">
-                        <svg width="64" height="64" fill="none" stroke="var(--primary)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                        </svg>
-                        <h2 class="mb-2">Welcome Back</h2>
-                        <p class="text-muted" style="margin: 0;">Sign in to your account</p>
-                    </div>
+            <div class="card-body" style="padding: 2.5rem;">
+                <div class="text-center mb-4">
+                    <svg width="64" height="64" fill="none" stroke="var(--primary)" viewBox="0 0 24 24" style="margin-bottom: 1rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <h2 class="mb-2">Welcome Back</h2>
+                    <p class="text-muted" style="margin: 0;">Sign in to your account</p>
+                </div>
 
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>@errorMessage</span>
+                    </div>
+                }
+
+                @if (!requiresOrganizationSelection)
+                {
                     <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
                         <DataAnnotationsValidator />
                         <AntiforgeryToken />
 
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger" style="display: flex; align-items: center; gap: 0.5rem;">
-                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                </svg>
-                                <span>@errorMessage</span>
-                            </div>
-                        }
-
                         <div class="mb-3">
-                            <label for="organization" class="form-label">
-                                Organization
+                            <label for="email" class="form-label">
+                                Email
                             </label>
-                            <InputText id="organization"
+                            <InputText id="email"
+                                       type="email"
                                        class="form-control form-control-lg"
-                                       @bind-Value="loginModel.Organization"
-                                       placeholder="acme-corp" />
-                            <ValidationMessage For="@(() => loginModel.Organization)" class="text-danger small" />
-                            <div class="form-text small">Enter your organization name</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="username" class="form-label">
-                                Username
-                            </label>
-                            <InputText id="username"
-                                       class="form-control form-control-lg"
-                                       @bind-Value="loginModel.Username"
-                                       placeholder="johndoe" />
-                            <ValidationMessage For="@(() => loginModel.Username)" class="validation-message" />
+                                       @bind-Value="loginModel.Email"
+                                       placeholder="name@company.com" />
+                            <ValidationMessage For="@(() => loginModel.Email)" class="validation-message" />
                         </div>
 
                         <div class="mb-4">
@@ -63,7 +54,7 @@
                                        type="password"
                                        class="form-control form-control-lg"
                                        @bind-Value="loginModel.Password"
-                                       placeholder="••••••••" />
+                                       placeholder="********" />
                             <ValidationMessage For="@(() => loginModel.Password)" class="validation-message" />
                         </div>
 
@@ -81,24 +72,65 @@
                             </button>
                         </div>
                     </EditForm>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label for="organizationSelect" class="form-label">
+                            Choose organization
+                        </label>
+                        <select id="organizationSelect" class="form-select form-select-lg" @bind="selectedOrganizationId">
+                            @foreach (var organization in availableOrganizations)
+                            {
+                                <option value="@organization.Id">@organization.Name</option>
+                            }
+                        </select>
+                        <div class="form-text small">Select the organization you want to access</div>
+                    </div>
 
-                    <div style="border-top: 1px solid var(--gray-200); margin: 1.5rem 0; padding-top: 1.5rem;">
-                        <div class="text-center">
-                            <p class="text-muted" style="margin-bottom: 0.75rem;">Don't have an organization?</p>
-                            <a href="/onboarding" class="btn btn-outline-primary">
-                                Create Organization
-                            </a>
-                        </div>
+                    <div style="margin-bottom: 1rem;">
+                        <button type="button" class="btn btn-primary btn-lg" style="width: 100%;" disabled="@isLoggingIn" @onclick="HandleOrganizationSelection">
+                            @if (isLoggingIn)
+                            {
+                                <span class="spinner-border spinner-border-sm" style="margin-right: 0.5rem;" role="status" aria-hidden="true"></span>
+                                <span>Loading...</span>
+                            }
+                            else
+                            {
+                                <span>Continue</span>
+                            }
+                        </button>
+                    </div>
+
+                    <div class="text-center">
+                        <button type="button" class="btn btn-link" @onclick="ResetLogin">
+                            Use a different account
+                        </button>
+                    </div>
+                }
+
+                <div style="border-top: 1px solid var(--gray-200); margin: 1.5rem 0; padding-top: 1.5rem;">
+                    <div class="text-center">
+                        <p class="text-muted" style="margin-bottom: 0.75rem;">Don't have an organization?</p>
+                        <a href="/onboarding" class="btn btn-outline-primary">
+                            Create Organization
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
 @code {
     private LoginModel loginModel = new();
     private bool isLoggingIn = false;
     private string errorMessage = string.Empty;
+    private bool requiresOrganizationSelection = false;
+    private List<OrganizationInfo> availableOrganizations = new();
+    private string selectedOrganizationId = string.Empty;
+    private string pendingAccessToken = string.Empty;
+    private int pendingExpiresIn = 0;
 
     private async Task HandleLogin()
     {
@@ -109,7 +141,15 @@
         {
             var result = await AuthService.LoginAsync(loginModel);
 
-            if (result.Success)
+            if (result.RequiresOrganizationSelection)
+            {
+                requiresOrganizationSelection = true;
+                availableOrganizations = result.Organizations;
+                pendingAccessToken = result.PendingAccessToken;
+                pendingExpiresIn = result.PendingExpiresIn;
+                selectedOrganizationId = availableOrganizations.FirstOrDefault()?.Id ?? string.Empty;
+            }
+            else if (result.Success)
             {
                 // Redirect to home page after successful login
                 Navigation.NavigateTo("/", forceLoad: true);
@@ -127,5 +167,53 @@
         {
             isLoggingIn = false;
         }
+    }
+
+    private async Task HandleOrganizationSelection()
+    {
+        if (string.IsNullOrEmpty(selectedOrganizationId))
+        {
+            errorMessage = "Please select an organization to continue.";
+            return;
+        }
+
+        isLoggingIn = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var result = await AuthService.SelectOrganizationAsync(
+                pendingAccessToken,
+                pendingExpiresIn,
+                selectedOrganizationId);
+
+            if (result.Success)
+            {
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                errorMessage = result.ErrorMessage ?? "Unable to access the selected organization.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoggingIn = false;
+        }
+    }
+
+    private void ResetLogin()
+    {
+        requiresOrganizationSelection = false;
+        availableOrganizations = new List<OrganizationInfo>();
+        selectedOrganizationId = string.Empty;
+        pendingAccessToken = string.Empty;
+        pendingExpiresIn = 0;
+        loginModel = new LoginModel();
+        errorMessage = string.Empty;
     }
 }

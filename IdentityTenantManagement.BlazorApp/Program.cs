@@ -1,11 +1,17 @@
 using IdentityTenantManagement.BlazorApp.Components;
 using IdentityTenantManagement.BlazorApp.Services;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<ProtectedSessionStorage>();
 
 // Configure HttpClient for API calls
 var apiBaseUrl = builder.Configuration.GetValue<string>("ApiSettings:BaseUrl") ?? "https://localhost:5280";
@@ -21,14 +27,16 @@ builder.Services.AddHttpClient("AuthenticationApi", client =>
     client.BaseAddress = new Uri(apiBaseUrl);
 });
 
-// Register authentication service as Singleton to maintain state across the Blazor circuit
-// Note: For multi-user production, consider using AuthenticationStateProvider instead
-builder.Services.AddSingleton<AuthenticationService>(sp =>
+// Register authentication service as scoped so auth state is per-circuit/user.
+builder.Services.AddScoped<AuthenticationService>(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var httpClient = httpClientFactory.CreateClient("AuthenticationApi");
-    return new AuthenticationService(httpClient);
+    var sessionStorage = sp.GetRequiredService<ProtectedSessionStorage>();
+    return new AuthenticationService(httpClient, sessionStorage);
 });
+
+builder.Services.AddScoped<AuthenticationStateProvider, AppAuthenticationStateProvider>();
 
 // Register the HttpClient that pages will use via @inject HttpClient
 // This HttpClient includes the AuthenticatedHttpClientHandler which adds auth headers

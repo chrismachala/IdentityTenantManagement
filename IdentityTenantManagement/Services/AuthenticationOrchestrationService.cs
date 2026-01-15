@@ -7,6 +7,7 @@ namespace IdentityTenantManagement.Services;
 public interface IAuthenticationOrchestrationService
 {
     Task<AuthenticationResponse> AuthenticateAsync(LoginModel loginModel);
+    Task<AuthenticationResponse> SelectOrganizationAsync(OrganizationSelectionModel selectionModel);
 }
 
 public class AuthenticationOrchestrationService : IAuthenticationOrchestrationService
@@ -39,13 +40,62 @@ public class AuthenticationOrchestrationService : IAuthenticationOrchestrationSe
             return authResponse;
         }
 
+        if (authResponse.RequiresOrganizationSelection)
+        {
+            return authResponse;
+        }
+
+        return await ValidateUserStatusAsync(authResponse, authResponse.UserInfo.OrganizationId);
+    }
+
+    public async Task<AuthenticationResponse> SelectOrganizationAsync(OrganizationSelectionModel selectionModel)
+    {
+        try
+        {
+            var userInfo = await _kcAuthenticationService.GetUserInfoForOrganizationAsync(
+                selectionModel.AccessToken,
+                selectionModel.OrganizationId);
+
+            if (userInfo == null)
+            {
+                return new AuthenticationResponse
+                {
+                    Success = false,
+                    ErrorMessage = "User does not have access to the selected organization"
+                };
+            }
+
+            var authResponse = new AuthenticationResponse
+            {
+                Success = true,
+                AccessToken = selectionModel.AccessToken,
+                ExpiresIn = selectionModel.ExpiresIn,
+                UserInfo = userInfo
+            };
+
+            return await ValidateUserStatusAsync(authResponse, selectionModel.OrganizationId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking user status during authentication");
+            // On error, allow authentication to proceed (fail open for availability)
+            return new AuthenticationResponse
+            {
+                Success = false,
+                ErrorMessage = "An error occurred during authentication"
+            };
+        }
+    }
+
+    private async Task<AuthenticationResponse> ValidateUserStatusAsync(AuthenticationResponse authResponse, string organizationId)
+    {
         try
         {
             var keycloakProviderId = Guid.Parse("049284C1-FF29-4F28-869F-F64300B69719");
 
             // Resolve Keycloak user ID to internal user ID
             var userExternalIdentity = await _unitOfWork.ExternalIdentities
-                .GetByExternalIdentifierAsync(authResponse.UserInfo.UserId, keycloakProviderId);
+                .GetByExternalIdentifierAsync(authResponse.UserInfo!.UserId, keycloakProviderId);
 
             if (userExternalIdentity == null)
             {
@@ -56,12 +106,12 @@ public class AuthenticationOrchestrationService : IAuthenticationOrchestrationSe
 
             // Resolve Keycloak organization ID to internal tenant ID
             var tenantExternalIdentity = await _unitOfWork.ExternalIdentities
-                .GetByExternalIdentifierAsync(authResponse.UserInfo.OrganizationId, keycloakProviderId);
+                .GetByExternalIdentifierAsync(organizationId, keycloakProviderId);
 
             if (tenantExternalIdentity == null)
             {
                 _logger.LogWarning("Organization {OrgId} not found in database for user {UserId}",
-                    authResponse.UserInfo.OrganizationId, authResponse.UserInfo.UserId);
+                    organizationId, authResponse.UserInfo.UserId);
                 return authResponse; // Allow authentication - org may be newly created
             }
 
@@ -142,7 +192,6 @@ public class AuthenticationOrchestrationService : IAuthenticationOrchestrationSe
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking user status during authentication");
-            // On error, allow authentication to proceed (fail open for availability)
             return authResponse;
         }
     }

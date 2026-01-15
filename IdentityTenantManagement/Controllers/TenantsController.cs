@@ -17,15 +17,18 @@ public class TenantsController : ControllerBase
     private readonly ITenantOrchestrationService _tenantOrchestrationService;
     private readonly IKCOrganisationService _kcOrganisationService;
     private readonly IUserService _userService;
+    private readonly IKCUserService _kcUserService;
 
     public TenantsController(
         ITenantOrchestrationService tenantOrchestrationService,
         IKCOrganisationService kcOrganisationService,
-        IUserService userService)
+        IUserService userService,
+        IKCUserService kcUserService)
     {
         _tenantOrchestrationService = tenantOrchestrationService;
         _kcOrganisationService = kcOrganisationService;
         _userService = userService;
+        _kcUserService = kcUserService;
     } 
     
     [HttpPost("Create")]
@@ -46,6 +49,13 @@ public class TenantsController : ControllerBase
     public async Task<IActionResult> InviteExistingUser([FromBody] UserTenantModel body)
     {
         await _kcOrganisationService.AddUserToOrganisationAsync(body);
+        var userRepresentation = await _kcUserService.GetUserByIdAsync(body.UserId);
+        await _userService.AddInvitedUserToDatabaseAsync(
+            body.UserId,
+            body.TenantId,
+            userRepresentation.Email ?? string.Empty,
+            userRepresentation.FirstName ?? string.Empty,
+            userRepresentation.LastName ?? string.Empty);
         return Ok(new {message="User successfully added to Organisation" });
 
     }

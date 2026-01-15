@@ -122,6 +122,7 @@ app.Use(async (context, next) =>
 app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseCors("AllowBlazorApp");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

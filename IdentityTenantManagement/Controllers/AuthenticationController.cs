@@ -35,10 +35,27 @@ public class AuthenticationController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        // Only log organization, not username for privacy
-        _logger.LogInformation("Login attempt for organization {Organization}", loginModel.Organization);
+        _logger.LogInformation("Login attempt for email {Email}", loginModel.Email);
 
         var result = await _authenticationService.AuthenticateAsync(loginModel);
+
+        if (!result.Success)
+        {
+            return Unauthorized(result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("select-organization")]
+    public async Task<ActionResult<AuthenticationResponse>> SelectOrganization([FromBody] OrganizationSelectionModel selectionModel)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _authenticationService.SelectOrganizationAsync(selectionModel);
 
         if (!result.Success)
         {

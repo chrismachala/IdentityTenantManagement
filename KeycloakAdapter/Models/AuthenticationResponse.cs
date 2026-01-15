@@ -8,6 +8,8 @@ public class AuthenticationResponse
     public int ExpiresIn { get; set; }
     public string? ErrorMessage { get; set; }
     public UserInfo? UserInfo { get; set; }
+    public bool RequiresOrganizationSelection { get; set; }
+    public List<OrganizationInfo> Organizations { get; set; } = new();
 }
 
 public class UserInfo
@@ -21,4 +23,10 @@ public class UserInfo
     
     public string OrganizationId { get; set; } = string.Empty;
     
+}
+
+public class OrganizationInfo
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 }

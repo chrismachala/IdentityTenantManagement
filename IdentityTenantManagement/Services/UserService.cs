@@ -152,14 +152,6 @@ public class UserService : IUserService
                 throw new InvalidOperationException("Keycloak identity provider not found in database. Ensure it is pre-seeded.");
             }
 
-            // Check if user already exists in database (by external identity)
-            var existingUserExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(keycloakUserId, keycloakProvider.Id);
-            if (existingUserExternalIdentity != null)
-            {
-                _logger.LogWarning("User with Keycloak ID {UserId} already exists in database. Skipping creation.", keycloakUserId);
-                return;
-            }
-
             // Check if tenant exists in database (by external identity)
             var tenantExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(keycloakTenantId, keycloakProvider.Id);
             if (tenantExternalIdentity == null)
@@ -168,6 +160,9 @@ public class UserService : IUserService
             }
 
             var tenantId = tenantExternalIdentity.EntityId;
+
+            // Check if user already exists in database (by external identity)
+            var existingUserExternalIdentity = await _unitOfWork.ExternalIdentities.GetByExternalIdentifierAsync(keycloakUserId, keycloakProvider.Id);
 
             // Get org-user role (default role for invited users) - validate before transaction
             var orgUserRole = await _roleService.GetRoleByNameAsync("org-user");
@@ -181,65 +176,80 @@ public class UserService : IUserService
 
             try
             {
-                // Generate internal GUID for user (NOT using Keycloak GUID)
-                var userId = Guid.NewGuid();
-
-                // Get the active status
-                var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
-                if (activeStatus == null)
+                Guid userId;
+                if (existingUserExternalIdentity != null)
                 {
-                    throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
+                    userId = existingUserExternalIdentity.EntityId;
+                }
+                else
+                {
+                    userId = Guid.NewGuid();
+
+                    // Create user with internal GUID (without name - that goes in profile)
+                    var user = new User
+                    {
+                        Id = userId,
+                        Email = email
+                    };
+                    await _unitOfWork.Users.AddAsync(user);
+
+                    // Create ExternalIdentity for user linking internal ID to Keycloak GUID
+                    var userExternalIdentity = new ExternalIdentity
+                    {
+                        ProviderId = keycloakProvider.Id,
+                        EntityTypeId = ExternalIdentityEntityTypeIds.User,
+                        EntityId = userId,
+                        ExternalIdentifier = keycloakUserId
+                    };
+                    await _unitOfWork.ExternalIdentities.AddAsync(userExternalIdentity);
                 }
 
-                // Create user with internal GUID (without name - that goes in profile)
-                var user = new User
+                var existingTenantUser = await _unitOfWork.TenantUsers.GetByTenantAndUserIdAsync(tenantId, userId);
+                if (existingTenantUser != null)
                 {
-                    Id = userId,
-                    Email = email
-                };
-                await _unitOfWork.Users.AddAsync(user);
-
-                // Create ExternalIdentity for user linking internal ID to Keycloak GUID
-                var userExternalIdentity = new ExternalIdentity
+                    _logger.LogInformation("User {UserId} is already a member of tenant {TenantId}", userId, tenantId);
+                }
+                else
                 {
-                    ProviderId = keycloakProvider.Id,
-                    EntityTypeId = ExternalIdentityEntityTypeIds.User,
-                    EntityId = userId,
-                    ExternalIdentifier = keycloakUserId
-                };
-                await _unitOfWork.ExternalIdentities.AddAsync(userExternalIdentity);
-
-                // Create TenantUser relationship (many-to-many join) with org-user role
-                var tenantUser = new TenantUser
-                {
-                    TenantId = tenantId,
-                    UserId = userId,
-                    TenantUserRoles = new List<TenantUserRole>
+                    // Create TenantUser relationship (many-to-many join) with org-user role
+                    var tenantUser = new TenantUser
                     {
-                        new TenantUserRole
+                        TenantId = tenantId,
+                        UserId = userId,
+                        TenantUserRoles = new List<TenantUserRole>
                         {
-                            RoleId = orgUserRole.Id
+                            new TenantUserRole
+                            {
+                                RoleId = orgUserRole.Id
+                            }
                         }
+                    };
+                    await _unitOfWork.TenantUsers.AddAsync(tenantUser);
+
+                    // Get the active status
+                    var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
+                    if (activeStatus == null)
+                    {
+                        throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
                     }
-                };
-                await _unitOfWork.TenantUsers.AddAsync(tenantUser);
 
-                // Create UserProfile with the user's name
-                var userProfile = new UserProfile
-                {
-                    FirstName = firstName,
-                    LastName = lastName,
-                    StatusId = activeStatus.Id
-                };
-                await _unitOfWork.UserProfiles.AddAsync(userProfile);
+                    // Create UserProfile with the user's name
+                    var userProfile = new UserProfile
+                    {
+                        FirstName = firstName,
+                        LastName = lastName,
+                        StatusId = activeStatus.Id
+                    };
+                    await _unitOfWork.UserProfiles.AddAsync(userProfile);
 
-                // Create TenantUserProfile linking the profile to this tenant-user relationship
-                var tenantUserProfile = new TenantUserProfile
-                {
-                    TenantUserId = tenantUser.Id,
-                    UserProfileId = userProfile.Id
-                };
-                await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
+                    // Create TenantUserProfile linking the profile to this tenant-user relationship
+                    var tenantUserProfile = new TenantUserProfile
+                    {
+                        TenantUserId = tenantUser.Id,
+                        UserProfileId = userProfile.Id
+                    };
+                    await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
+                }
 
                 // Commit all changes atomically
                 await _unitOfWork.CommitAsync();
