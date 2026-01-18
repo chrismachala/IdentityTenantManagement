@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using IdentityTenantManagement.Models.Roles;
 using IdentityTenantManagement.Services;
+using IdentityTenantManagementDatabase.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdentityTenantManagement.Controllers;
@@ -15,13 +16,16 @@ public class RolesPermissionController : ControllerBase
 {
     private readonly IUserRoleService _userRoleService;
     private readonly ILogger<RolesPermissionController> _logger;
+    private readonly IUnitOfWork _unitOfWork;
 
     public RolesPermissionController(
         IUserRoleService userRoleService,
-        ILogger<RolesPermissionController> logger)
+        ILogger<RolesPermissionController> logger,
+        IUnitOfWork unitOfWork)
     {
         _userRoleService = userRoleService;
         _logger = logger;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -113,7 +117,7 @@ public class RolesPermissionController : ControllerBase
 
         try
         {
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            var actorUserId = GetActorUserId();
             var roleId = await _userRoleService.CreateRoleAsync(request, actorUserId);
             return CreatedAtAction(nameof(GetRoleWithPermissions), new { tenantId, roleId }, new { roleId });
         }
@@ -150,7 +154,7 @@ public class RolesPermissionController : ControllerBase
 
         try
         {
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            var actorUserId = GetActorUserId();
             await _userRoleService.UpdateRoleAsync(roleId, request, actorUserId);
             return Ok(new { message = "Role updated successfully" });
         }
@@ -181,7 +185,7 @@ public class RolesPermissionController : ControllerBase
     {
         try
         {
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            var actorUserId = GetActorUserId();
             await _userRoleService.AssignPermissionToRoleAsync(roleId, permissionId, actorUserId);
             return Ok(new { message = "Permission assigned successfully" });
         }
@@ -212,7 +216,7 @@ public class RolesPermissionController : ControllerBase
     {
         try
         {
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            var actorUserId = GetActorUserId();
             await _userRoleService.RemovePermissionFromRoleAsync(roleId, permissionId, actorUserId);
             return Ok(new { message = "Permission removed successfully" });
         }
@@ -277,8 +281,8 @@ public class RolesPermissionController : ControllerBase
 
         try
         {
-            // Get the calling user ID from claims (if available)
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            // Get the calling user ID from claims (if available) 
+            var actorUserId = GetActorUserId();
 
             await _userRoleService.AssignRoleToUserAsync(tenantId, request.UserId, request.RoleId, actorUserId);
             return Ok(new { message = "Role assigned successfully" });
@@ -314,7 +318,7 @@ public class RolesPermissionController : ControllerBase
         try
         {
             // Get the calling user ID from claims (if available)
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            var actorUserId = GetActorUserId();
 
             await _userRoleService.RemoveRoleFromUserAsync(tenantId, userId, roleId, actorUserId);
             return Ok(new { message = "Role removed successfully" });
@@ -349,7 +353,7 @@ public class RolesPermissionController : ControllerBase
     {
         try
         {
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            var actorUserId = GetActorUserId();
             await _userRoleService.AssignPermissionToUserAsync(tenantId, userId, permissionId, actorUserId);
             return Ok(new { message = "Permission assigned successfully" });
         }
@@ -383,7 +387,7 @@ public class RolesPermissionController : ControllerBase
     {
         try
         {
-            var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+            var actorUserId = GetActorUserId();
             await _userRoleService.RemovePermissionFromUserAsync(tenantId, userId, permissionId, actorUserId);
             return Ok(new { message = "Permission removed successfully" });
         }
@@ -399,5 +403,21 @@ public class RolesPermissionController : ControllerBase
                 permissionId, userId, tenantId);
             return StatusCode(500, new { message = "Failed to remove permission", error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Gets the actor user ID from the X-User-Id header (preferred) or falls back to JWT claims lookup.
+    /// </summary>
+    private string? GetActorUserId()
+    {
+        // Check X-User-Id header first (internal user ID sent by Blazor app)
+        var headerUserId = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(headerUserId))
+        {
+            return headerUserId;
+        }
+
+        // Fall back to JWT claims
+        return User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
     }
 }

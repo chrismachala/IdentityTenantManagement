@@ -54,20 +54,17 @@ public class AuditLogRepository : IAuditLogRepository
         string resourceType,
         string resourceId,
         Guid? actorUserId = null,
-        string? actorDisplayName = null,
         Guid? tenantId = null,
         string? oldValues = null,
         string? newValues = null,
         string? ipAddress = null,
-        string? userAgent = null,
-        string? additionalContext = null)
+        string? userAgent = null)
     {
         var auditLog = new AuditLog
         {
             Id = Guid.NewGuid(),
             Timestamp = DateTime.UtcNow,
             ActorUserId = actorUserId,
-            ActorDisplayName = actorDisplayName ?? "system",
             TenantId = tenantId,
             Action = action,
             ResourceType = resourceType,
@@ -75,11 +72,28 @@ public class AuditLogRepository : IAuditLogRepository
             OldValues = oldValues,
             NewValues = newValues,
             IpAddress = ipAddress,
-            UserAgent = userAgent,
-            AdditionalContext = additionalContext
+            UserAgent = userAgent
         };
 
         await AddAsync(auditLog);
+    }
+
+    public async Task<List<AuditLog>> GetByTenantIdAsync(Guid tenantId, int page = 1, int pageSize = 50)
+    {
+        return await _context.AuditLogs
+            .Where(log => log.TenantId == tenantId)
+            .OrderByDescending(log => log.Timestamp)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Include(log => log.ActorUser)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetCountByTenantIdAsync(Guid tenantId)
+    {
+        return await _context.AuditLogs
+            .Where(log => log.TenantId == tenantId)
+            .CountAsync();
     }
 
     public async Task AnonymizeLogsForUserAsync(Guid userId)
@@ -90,7 +104,8 @@ public class AuditLogRepository : IAuditLogRepository
 
         foreach (var log in logs)
         {
-            log.ActorDisplayName = "deleted user";
+            // Clear the actor reference (the FK will be set to null due to SetNull behavior)
+            log.ActorUserId = null;
 
             if (log.OldValues != null)
                 log.OldValues = RedactPII(log.OldValues);

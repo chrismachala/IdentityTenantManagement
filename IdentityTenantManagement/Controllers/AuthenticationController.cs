@@ -90,4 +90,28 @@ public class AuthenticationController : ControllerBase
         var permissions = await _permissionService.GetUserPermissionsAsync(tenantId, userId);
         return Ok(permissions);
     }
+
+    /// <summary>
+    /// Debug endpoint to inspect current user claims from JWT token.
+    /// Remove this endpoint in production.
+    /// </summary>
+    [HttpGet("debug/claims")]
+    public IActionResult GetClaims()
+    {
+        var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+        var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+        var authenticationType = User.Identity?.AuthenticationType;
+
+        return Ok(new
+        {
+            IsAuthenticated = isAuthenticated,
+            AuthenticationType = authenticationType,
+            ClaimsCount = claims.Count,
+            Claims = claims,
+            SubClaim = User.FindFirst("sub")?.Value,
+            UserIdClaim = User.FindFirst("user_id")?.Value,
+            PreferredUsernameClaim = User.FindFirst("preferred_username")?.Value,
+            EmailClaim = User.FindFirst("email")?.Value
+        });
+    }
 }

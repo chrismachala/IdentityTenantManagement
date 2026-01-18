@@ -11,8 +11,8 @@ public interface IUserService
 {
     Task UpdateUserAsync(string userId, EditUserModel model, string tenantId);
     Task AddInvitedUserToDatabaseAsync(string keycloakUserId, string keycloakTenantId, string email, string firstName, string lastName);
-    Task DeactivateUserInTenantAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
-    Task ReactivateUserInTenantAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
+    Task DeactivateUserInTenantAsync(Guid tenantId, Guid userId, Guid? actorUserId = null, CancellationToken cancellationToken = default);
+    Task ReactivateUserInTenantAsync(Guid tenantId, Guid userId, Guid? actorUserId = null, CancellationToken cancellationToken = default);
     Task<(IEnumerable<Models.Users.UserSummaryDto> Users, int TotalCount)> GetUsersAsync(
         Guid tenantId,
         bool includeInactive = false,
@@ -212,11 +212,7 @@ public class UserService : IUserService
                 }
 
                 var existingTenantUser = await _unitOfWork.TenantUsers.GetByTenantAndUserIdAsync(tenantId, userId);
-                if (existingTenantUser != null)
-                {
-                    _logger.LogInformation("User {UserId} is already a member of tenant {TenantId}", userId, tenantId);
-                }
-                else
+                if (existingTenantUser == null)
                 {
                     // Create TenantUser relationship (many-to-many join) with org-user role
                     var tenantUser = new TenantUser
@@ -295,8 +291,9 @@ public class UserService : IUserService
     /// </summary>
     /// <param name="tenantId">The internal tenant ID</param>
     /// <param name="userId">The internal user ID</param>
+    /// <param name="actorUserId">The ID of the user performing the action (for audit logging)</param>
     /// <param name="cancellationToken">Cancellation token for graceful shutdown</param>
-    public async Task DeactivateUserInTenantAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
+    public async Task DeactivateUserInTenantAsync(Guid tenantId, Guid userId, Guid? actorUserId = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[SAGA] Starting deactivation saga for user {UserId} in tenant {TenantId}", userId, tenantId);
 
@@ -389,15 +386,14 @@ public class UserService : IUserService
                 _logger.LogInformation("[SAGA] Set InactiveAt timestamp for TenantUserProfile {ProfileId}", tenantUserProfile.Id);
 
                 // Check if user is now inactive across ALL tenants and mark globally inactive if so
-                await CheckAndMarkGloballyInactiveAsync(userId, inactiveStatus.Id, now);
+                await CheckAndMarkGloballyInactiveAsync(userId, inactiveStatus.Id, now, actorUserId);
 
                 // Log the deactivation action (using internal IDs for database records)
                 await _unitOfWork.AuditLogs.LogAsync(
                     action: "user.deactivated",
                     resourceType: "User",
                     resourceId: userId.ToString(),
-                    actorUserId: null,
-                    actorDisplayName: "system",
+                    actorUserId: actorUserId,
                     tenantId: tenantId,
                     oldValues: $"{{\"statusId\":\"{previousStatusId}\"}}",
                     newValues: $"{{\"statusId\":\"{inactiveStatus.Id}\",\"inactiveAt\":\"{now:O}\"}}");
@@ -561,8 +557,9 @@ public class UserService : IUserService
     /// </summary>
     /// <param name="tenantId">The internal tenant ID</param>
     /// <param name="userId">The internal user ID</param>
+    /// <param name="actorUserId">The ID of the user performing the action (for audit logging)</param>
     /// <param name="cancellationToken">Cancellation token for graceful shutdown</param>
-    public async Task ReactivateUserInTenantAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
+    public async Task ReactivateUserInTenantAsync(Guid tenantId, Guid userId, Guid? actorUserId = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[SAGA] Starting reactivation saga for user {UserId} in tenant {TenantId}", userId, tenantId);
 
@@ -655,15 +652,14 @@ public class UserService : IUserService
                 _logger.LogInformation("[SAGA] Cleared InactiveAt timestamp for TenantUserProfile {ProfileId}", tenantUserProfile.Id);
 
                 // Check if user should have global inactive state cleared
-                await CheckAndClearGloballyInactiveAsync(userId, activeStatus.Id);
+                await CheckAndClearGloballyInactiveAsync(userId, activeStatus.Id, actorUserId);
 
                 // Log the reactivation action (using internal IDs for database records)
                 await _unitOfWork.AuditLogs.LogAsync(
                     action: "user.reactivated",
                     resourceType: "User",
                     resourceId: userId.ToString(),
-                    actorUserId: null,
-                    actorDisplayName: "system",
+                    actorUserId: actorUserId,
                     tenantId: tenantId,
                     oldValues: $"{{\"statusId\":\"{previousStatusId}\",\"inactiveAt\":\"{previousInactiveAt:O}\"}}",
                     newValues: $"{{\"statusId\":\"{activeStatus.Id}\",\"inactiveAt\":null}}");
@@ -860,7 +856,8 @@ public class UserService : IUserService
     /// <param name="userId">The internal user ID (database GUID, NOT Keycloak ID)</param>
     /// <param name="inactiveStatusId">The inactive status type ID</param>
     /// <param name="timestamp">The timestamp to use for GloballyInactiveAt</param>
-    private async Task CheckAndMarkGloballyInactiveAsync(Guid userId, Guid inactiveStatusId, DateTime timestamp)
+    /// <param name="actorUserId">The ID of the user performing the action (for audit logging)</param>
+    private async Task CheckAndMarkGloballyInactiveAsync(Guid userId, Guid inactiveStatusId, DateTime timestamp, Guid? actorUserId)
     {
         _logger.LogInformation("Checking if user {UserId} is now globally inactive", userId);
 
@@ -918,8 +915,7 @@ public class UserService : IUserService
                     action: "user.globally_inactive",
                     resourceType: "User",
                     resourceId: userId.ToString(),
-                    actorUserId: null,
-                    actorDisplayName: "system",
+                    actorUserId: actorUserId,
                     tenantId: null,
                     oldValues: "{\"globallyInactiveAt\":null}",
                     newValues: $"{{\"globallyInactiveAt\":\"{timestamp:O}\"}}");
@@ -945,7 +941,8 @@ public class UserService : IUserService
     /// </summary>
     /// <param name="userId">The internal user ID (database GUID, NOT Keycloak ID)</param>
     /// <param name="activeStatusId">The active status type ID</param>
-    private async Task CheckAndClearGloballyInactiveAsync(Guid userId, Guid activeStatusId)
+    /// <param name="actorUserId">The ID of the user performing the action (for audit logging)</param>
+    private async Task CheckAndClearGloballyInactiveAsync(Guid userId, Guid activeStatusId, Guid? actorUserId)
     {
         _logger.LogInformation("Checking if globally inactive user {UserId} should be cleared", userId);
 
@@ -1019,8 +1016,7 @@ public class UserService : IUserService
                     action: "user.globally_active",
                     resourceType: "User",
                     resourceId: userId.ToString(),
-                    actorUserId: null,
-                    actorDisplayName: "system",
+                    actorUserId: actorUserId,
                     tenantId: null,
                     oldValues: $"{{\"globallyInactiveAt\":\"{user.GloballyInactiveAt:O}\"}}",
                     newValues: "{\"globallyInactiveAt\":null}");

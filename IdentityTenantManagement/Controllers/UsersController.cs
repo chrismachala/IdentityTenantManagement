@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using IdentityTenantManagement.Authorization;
 using IdentityTenantManagement.Services;
+using IdentityTenantManagementDatabase.Repositories;
 using KeycloakAdapter.Models;
 using KeycloakAdapter.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -17,20 +18,20 @@ public class UsersController : ControllerBase
     private readonly IKCUserService _kcUserService;
     private readonly IKCOrganisationService _kcOrganisationService;
     private readonly IUserService _userService;
-    private readonly IKCEventsService _kcEventsService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UsersController(
         IUserOrchestrationService userOrchestrationService,
         IKCUserService kcUserService,
         IKCOrganisationService kcOrganisationService,
         IUserService userService,
-        IKCEventsService kcEventsService)
+        IUnitOfWork unitOfWork)
     {
         _userOrchestrationService = userOrchestrationService;
         _kcUserService = kcUserService;
         _kcOrganisationService = kcOrganisationService;
         _userService = userService;
-        _kcEventsService = kcEventsService;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpGet("organization/{organizationId}")]
@@ -87,7 +88,8 @@ public class UsersController : ControllerBase
                 return BadRequest(new { message = "Invalid user ID or tenant ID format" });
             }
 
-            await _userService.DeactivateUserInTenantAsync(tenantGuid, userGuid);
+            var actorUserId = await GetActorUserIdAsync();
+            await _userService.DeactivateUserInTenantAsync(tenantGuid, userGuid, actorUserId);
             return Ok(new { message = "User soft-deleted successfully. Use the reactivation endpoint to restore access." });
         }
         catch (InvalidOperationException ex)
@@ -100,27 +102,63 @@ public class UsersController : ControllerBase
         }
     }
 
-    [HttpGet("events/recent-registrations")]
-    public async Task<IActionResult> GetRecentRegistrations()
+    /// <summary>
+    /// Extracts the current user's internal database ID from JWT claims.
+    /// The JWT contains the Keycloak external ID, so we need to look up the internal ID.
+    /// </summary>
+    /// <returns>The actor's internal user ID as a Guid, or null if not available</returns>
+    private async Task<Guid?> GetActorUserIdAsync()
     {
+        // Try to get internal user ID from custom header first (set by Blazor app)
+        var internalUserIdString = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(internalUserIdString) && Guid.TryParse(internalUserIdString, out var internalUserId))
+        {
+            return internalUserId;
+        }
+
+        // Get the Keycloak user ID from JWT claims
+        var keycloakUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+        if (string.IsNullOrEmpty(keycloakUserId))
+        {
+            return null;
+        }
+
+        // Look up the internal user ID from the Keycloak external ID
         try
         {
-            var registrations = await _kcEventsService.GetRecentRegistrationEventsAsync();
-            return Ok(new
-            {
-                message = "Recent registration events retrieved successfully",
-                count = registrations.Count,
-                registrations = registrations
-            });
+            var keycloakProviderId = Guid.Parse("049284C1-FF29-4F28-869F-F64300B69719");
+            var externalIdentity = await _unitOfWork.ExternalIdentities
+                .GetByExternalIdentifierAsync(keycloakUserId, keycloakProviderId);
+
+            return externalIdentity?.EntityId;
         }
-        catch (Exception ex)
+        catch
         {
-            return StatusCode(500, new
-            {
-                message = "Failed to retrieve registration events",
-                error = ex.Message,
-                stackTrace = ex.StackTrace
-            });
+            return null;
         }
     }
+
+    // [HttpGet("events/recent-registrations")]
+    // public async Task<IActionResult> GetRecentRegistrations()
+    // {
+    //     try
+    //     {
+    //         var registrations = await _kcEventsService.GetRecentRegistrationEventsAsync();
+    //         return Ok(new
+    //         {
+    //             message = "Recent registration events retrieved successfully",
+    //             count = registrations.Count,
+    //             registrations = registrations
+    //         });
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         return StatusCode(500, new
+    //         {
+    //             message = "Failed to retrieve registration events",
+    //             error = ex.Message,
+    //             stackTrace = ex.StackTrace
+    //         });
+    //     }
+    // }
 }

@@ -21,22 +21,22 @@ public class SettingsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets the actor user ID from JWT claims or custom headers
+    /// Gets the actor user ID from X-User-Id header (preferred) or falls back to JWT claims
     /// </summary>
     private string? GetActorUserId()
     {
-        // Try JWT claims first
-        var actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
+        // Check X-User-Id header first (internal user ID sent by Blazor app)
+        var actorUserId = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(actorUserId))
+        {
+            _logger.LogInformation("GetActorUserId - From X-User-Id header: {ActorUserId}", actorUserId);
+            return actorUserId;
+        }
 
+        // Fall back to JWT claims
+        actorUserId = User.FindFirst("sub")?.Value ?? User.FindFirst("user_id")?.Value;
         _logger.LogInformation("GetActorUserId - From JWT claims: {ActorUserId}, IsAuthenticated: {IsAuth}",
             actorUserId ?? "(null)", User.Identity?.IsAuthenticated ?? false);
-
-        // Fall back to custom header if JWT claims are not available
-        if (string.IsNullOrEmpty(actorUserId))
-        {
-            actorUserId = Request.Headers["X-User-Id"].FirstOrDefault();
-            _logger.LogInformation("GetActorUserId - From X-User-Id header: {ActorUserId}", actorUserId ?? "(null)");
-        }
 
         return actorUserId;
     }
@@ -142,7 +142,6 @@ public class SettingsController : ControllerBase
                     resourceType: "GlobalSetting",
                     resourceId: key,
                     actorUserId: actorGuid,
-                    actorDisplayName: actorUserId,
                     tenantId: tenantId,
                     oldValues: oldValue != null ? $"{{\"value\":\"{oldValue}\"}}" : null,
                     newValues: $"{{\"value\":\"{request.Value}\"}}"
@@ -202,7 +201,6 @@ public class SettingsController : ControllerBase
                         resourceType: "GlobalSetting",
                         resourceId: setting.Key,
                         actorUserId: actorGuid,
-                        actorDisplayName: actorUserId,
                         tenantId: tenantId,
                         oldValues: oldValue != null ? $"{{\"value\":\"{oldValue}\"}}" : null,
                         newValues: $"{{\"value\":\"{setting.Value}\"}}"

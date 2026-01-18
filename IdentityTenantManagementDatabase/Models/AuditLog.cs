@@ -8,7 +8,6 @@ public class AuditLog
     // Actor (who performed the action)
     public Guid? ActorUserId { get; set; }
     public User? ActorUser { get; set; }
-    public string ActorDisplayName { get; set; } = default!;
 
     // Tenant context
     public Guid? TenantId { get; set; }
@@ -26,5 +25,4 @@ public class AuditLog
     // Request metadata
     public string? IpAddress { get; set; }
     public string? UserAgent { get; set; }
-    public string? AdditionalContext { get; set; }
 }

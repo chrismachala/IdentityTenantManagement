@@ -172,7 +172,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "TenantUser",
                     resourceId: tenantUser.Id.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: tenantId,
                     oldValues: null,
                     newValues: $"{{\"roleId\":\"{roleId}\",\"roleName\":\"{role.Name}\"}}");
@@ -249,7 +248,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "TenantUser",
                     resourceId: tenantUser.Id.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: tenantId,
                     oldValues: $"{{\"roleId\":\"{roleId}\",\"roleName\":\"{role.Name}\"}}",
                     newValues: null);
@@ -387,7 +385,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "Role",
                     resourceId: role.Id.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: null,
                     oldValues: null,
                     newValues: $"{{\"name\":\"{role.Name}\",\"displayName\":\"{role.DisplayName}\"}}");
@@ -444,7 +441,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "Role",
                     resourceId: role.Id.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: null,
                     oldValues: oldValues,
                     newValues: $"{{\"displayName\":\"{role.DisplayName}\",\"description\":\"{role.Description}\"}}");
@@ -516,7 +512,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "Role",
                     resourceId: roleId.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: null,
                     oldValues: null,
                     newValues: $"{{\"permissionId\":\"{permissionId}\",\"permissionName\":\"{permission.Name}\"}}");
@@ -581,7 +576,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "Role",
                     resourceId: roleId.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: null,
                     oldValues: $"{{\"permissionId\":\"{permissionId}\",\"permissionName\":\"{permission.Name}\"}}",
                     newValues: null);
@@ -654,7 +648,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "TenantUser",
                     resourceId: tenantUser.Id.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: tenantId,
                     oldValues: null,
                     newValues: $"{{\"permissionId\":\"{permissionId}\",\"permissionName\":\"{permission.Name}\"}}");
@@ -719,7 +712,6 @@ public class UserRoleService : IUserRoleService
                     resourceType: "TenantUser",
                     resourceId: tenantUser.Id.ToString(),
                     actorUserId: actorUserId != null ? Guid.Parse(actorUserId) : null,
-                    actorDisplayName: actorUserId ?? "system",
                     tenantId: tenantId,
                     oldValues: $"{{\"permissionId\":\"{permissionId}\",\"permissionName\":\"{permission.Name}\"}}",
                     newValues: null);

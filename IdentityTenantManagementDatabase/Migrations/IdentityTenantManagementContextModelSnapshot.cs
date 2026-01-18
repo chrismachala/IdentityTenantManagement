@@ -33,15 +33,8 @@ namespace IdentityTenantManagementDatabase.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("ActorDisplayName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("AdditionalContext")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("IpAddress")
                         .HasColumnType("nvarchar(max)");
