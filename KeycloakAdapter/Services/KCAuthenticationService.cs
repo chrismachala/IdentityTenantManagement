@@ -14,6 +14,7 @@ public interface IKCAuthenticationService
 {
     Task<AuthenticationResponse> AuthenticateAsync(LoginModel loginModel);
     Task<UserInfo?> GetUserInfoForOrganizationAsync(string accessToken, string organizationId);
+    Task<List<OrganizationInfo>> GetOrganizationsForAccessTokenAsync(string accessToken);
 }
 
 public class KCAuthenticationService : IKCAuthenticationService
@@ -227,6 +228,25 @@ public class KCAuthenticationService : IKCAuthenticationService
             _logger.LogError(ex, "Error getting user info");
             return null;
         }
+    }
+
+    public async Task<List<OrganizationInfo>> GetOrganizationsForAccessTokenAsync(string accessToken)
+    {
+        var userInfo = await GetUserInfoAsync(accessToken);
+        if (userInfo == null || string.IsNullOrWhiteSpace(userInfo.UserId))
+        {
+            return new List<OrganizationInfo>();
+        }
+
+        var organizations = await GetOrganizationsForUserAsync(userInfo.UserId);
+        return organizations
+            .Where(org => !string.IsNullOrWhiteSpace(org.Id))
+            .Select(org => new OrganizationInfo
+            {
+                Id = org.Id,
+                Name = org.Name ?? string.Empty
+            })
+            .ToList();
     }
 
     private async Task<List<OrganizationRepresentation>> GetOrganizationsForUserAsync(string userId)

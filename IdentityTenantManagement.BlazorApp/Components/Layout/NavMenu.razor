@@ -1,5 +1,6 @@
 @using IdentityTenantManagement.BlazorApp.Services
 @inject AuthenticationService AuthService
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <!-- Brand Header -->
@@ -107,12 +108,66 @@
                     <div class="user-value">@AuthService.CurrentState.UserInfo.Organization</div>
                 </div>
             </div>
+          
+                <button class="btn-logout" @onclick="OpenSwitchOrganizationDialog">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 7V3m8 4V3M4 11h16M6 15h12M6 19h12"></path>
+                    </svg>
+                    Switch Organization
+                </button>
+          
+
             <button class="btn-logout" @onclick="HandleLogout">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                 </svg>
                 Sign Out
             </button>
+        </div>
+    </div>
+}
+
+@if (showSwitchOrganizationDialog)
+{
+    <div style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; z-index: 1050;">
+        <div style="background: white; border-radius: 12px; width: min(90vw, 420px); box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25); padding: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <h5 style="margin: 0;">Switch Organization</h5>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CloseSwitchOrganizationDialog">Close</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(switchOrganizationError))
+            {
+                <div class="alert alert-danger" style="margin-bottom: 1rem;">
+                    @switchOrganizationError
+                </div>
+            }
+
+            <div class="mb-3">
+                <label for="organizationSwitch" class="form-label">Organization</label>
+                <select id="organizationSwitch" class="form-select" @bind-Value="selectedOrganizationId" @bind-Value:event="onchange" disabled="@isLoadingOrganizations">
+                    @foreach (var organization in availableOrganizations)
+                    {
+                        <option value="@organization.Id">@organization.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button class="btn btn-outline-secondary" @onclick="CloseSwitchOrganizationDialog" disabled="@isSwitchingOrganization">Cancel</button>
+                <button class="btn btn-primary" @onclick="ConfirmSwitchOrganization" disabled="@isSwitchingOrganization">
+                    @if (isSwitchingOrganization)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span style="margin-left: 0.5rem;">Switching...</span>
+                    }
+                    else
+                    {
+                        <span>Switch</span>
+                    }
+                </button>
+            </div>
         </div>
     </div>
 }
@@ -132,6 +187,80 @@
     {
         AuthService.Logout();
         StateHasChanged();
+    }
+
+    private bool showSwitchOrganizationDialog = false;
+    private bool isLoadingOrganizations = false;
+    private bool isSwitchingOrganization = false;
+    private string switchOrganizationError = string.Empty;
+    private List<OrganizationInfo> availableOrganizations = new();
+    private string selectedOrganizationId = string.Empty;
+
+    private async Task OpenSwitchOrganizationDialog()
+    {
+        showSwitchOrganizationDialog = true;
+        switchOrganizationError = string.Empty;
+        isLoadingOrganizations = true;
+        availableOrganizations = new List<OrganizationInfo>();
+
+        try
+        {
+            var organizations = await AuthService.GetOrganizationsAsync();
+            availableOrganizations = organizations
+                .Where(org => !string.IsNullOrWhiteSpace(org.Id))
+                .ToList();
+            selectedOrganizationId = availableOrganizations
+                .FirstOrDefault(org => org.Id == AuthService.CurrentState.UserInfo?.OrganizationId)?.Id
+                ?? availableOrganizations.FirstOrDefault()?.Id
+                ?? string.Empty;
+
+            if (availableOrganizations.Count == 0)
+            {
+                switchOrganizationError = "No organizations available for this account.";
+            }
+        }
+        finally
+        {
+            isLoadingOrganizations = false;
+        }
+    }
+
+    private void CloseSwitchOrganizationDialog()
+    {
+        showSwitchOrganizationDialog = false;
+        switchOrganizationError = string.Empty;
+        availableOrganizations = new List<OrganizationInfo>();
+        selectedOrganizationId = string.Empty;
+    }
+
+    private async Task ConfirmSwitchOrganization()
+    {
+        if (string.IsNullOrEmpty(selectedOrganizationId))
+        {
+            switchOrganizationError = "Please select an organization.";
+            return;
+        }
+
+        isSwitchingOrganization = true;
+        switchOrganizationError = string.Empty;
+
+        try
+        {
+            var result = await AuthService.SwitchOrganizationAsync(selectedOrganizationId);
+            if (result.Success)
+            {
+                showSwitchOrganizationDialog = false;
+                Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+            }
+            else
+            {
+                switchOrganizationError = result.ErrorMessage ?? "Unable to switch organization.";
+            }
+        }
+        finally
+        {
+            isSwitchingOrganization = false;
+        }
     }
 
     private string GetInitials(string firstName, string lastName)

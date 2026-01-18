@@ -8,6 +8,7 @@ public interface IAuthenticationOrchestrationService
 {
     Task<AuthenticationResponse> AuthenticateAsync(LoginModel loginModel);
     Task<AuthenticationResponse> SelectOrganizationAsync(OrganizationSelectionModel selectionModel);
+    Task<List<OrganizationInfo>> GetOrganizationsAsync(string accessToken);
 }
 
 public class AuthenticationOrchestrationService : IAuthenticationOrchestrationService
@@ -85,6 +86,11 @@ public class AuthenticationOrchestrationService : IAuthenticationOrchestrationSe
                 ErrorMessage = "An error occurred during authentication"
             };
         }
+    }
+
+    public async Task<List<OrganizationInfo>> GetOrganizationsAsync(string accessToken)
+    {
+        return await _kcAuthenticationService.GetOrganizationsForAccessTokenAsync(accessToken);
     }
 
     private async Task<AuthenticationResponse> ValidateUserStatusAsync(AuthenticationResponse authResponse, string organizationId)

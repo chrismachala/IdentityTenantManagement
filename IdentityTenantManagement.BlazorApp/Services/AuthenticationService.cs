@@ -153,6 +153,68 @@ public class AuthenticationService : IDisposable
         }
     }
 
+    public async Task<List<OrganizationInfo>> GetOrganizationsAsync()
+    {
+        try
+        {
+            if (!_currentState.IsAuthenticated || string.IsNullOrEmpty(_currentState.AccessToken))
+            {
+                return new List<OrganizationInfo>();
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/v1.0/Authentication/organizations");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                _currentState.AccessToken);
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                return new List<OrganizationInfo>();
+            }
+
+            return await response.Content.ReadFromJsonAsync<List<OrganizationInfo>>() ?? new List<OrganizationInfo>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Get organizations error: {ex.Message}");
+            return new List<OrganizationInfo>();
+        }
+    }
+
+    public async Task<LoginResult> SwitchOrganizationAsync(string organizationId)
+    {
+        if (!_currentState.IsAuthenticated || string.IsNullOrEmpty(_currentState.AccessToken))
+        {
+            return new LoginResult
+            {
+                Success = false,
+                ErrorMessage = "You are not authenticated."
+            };
+        }
+
+        if (!_currentState.ExpiresAt.HasValue)
+        {
+            return new LoginResult
+            {
+                Success = false,
+                ErrorMessage = "Session information is missing."
+            };
+        }
+
+        var remainingSeconds = (int)Math.Max((_currentState.ExpiresAt.Value - DateTime.UtcNow).TotalSeconds, 0);
+        if (remainingSeconds <= 0)
+        {
+            return new LoginResult
+            {
+                Success = false,
+                ErrorMessage = "Your session has expired. Please sign in again."
+            };
+        }
+
+        return await SelectOrganizationAsync(_currentState.AccessToken, remainingSeconds, organizationId);
+    }
+
     public void Logout()
     {
         _expirationTimer?.Stop();

@@ -204,6 +204,13 @@ public class UserService : IUserService
                     await _unitOfWork.ExternalIdentities.AddAsync(userExternalIdentity);
                 }
 
+                // Get the active status
+                var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
+                if (activeStatus == null)
+                {
+                    throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
+                }
+
                 var existingTenantUser = await _unitOfWork.TenantUsers.GetByTenantAndUserIdAsync(tenantId, userId);
                 if (existingTenantUser != null)
                 {
@@ -225,14 +232,16 @@ public class UserService : IUserService
                         }
                     };
                     await _unitOfWork.TenantUsers.AddAsync(tenantUser);
+                    existingTenantUser = tenantUser;
+                }
+                else
+                {
+                    _logger.LogInformation("User {UserId} is already a member of tenant {TenantId}", userId, tenantId);
+                }
 
-                    // Get the active status
-                    var activeStatus = await _unitOfWork.UserStatusTypes.GetByNameAsync("active");
-                    if (activeStatus == null)
-                    {
-                        throw new InvalidOperationException("Active user status type not found in database. Ensure it is pre-seeded.");
-                    }
-
+                var existingProfile = await _unitOfWork.TenantUserProfiles.GetByTenantUserIdAsync(existingTenantUser.Id);
+                if (existingProfile == null)
+                {
                     // Create UserProfile with the user's name
                     var userProfile = new UserProfile
                     {
@@ -245,7 +254,7 @@ public class UserService : IUserService
                     // Create TenantUserProfile linking the profile to this tenant-user relationship
                     var tenantUserProfile = new TenantUserProfile
                     {
-                        TenantUserId = tenantUser.Id,
+                        TenantUserId = existingTenantUser.Id,
                         UserProfileId = userProfile.Id
                     };
                     await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);

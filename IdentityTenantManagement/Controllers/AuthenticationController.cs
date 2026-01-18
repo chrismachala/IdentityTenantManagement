@@ -65,6 +65,25 @@ public class AuthenticationController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("organizations")]
+    public async Task<ActionResult<List<OrganizationInfo>>> GetOrganizations()
+    {
+        var authorization = Request.Headers.Authorization.ToString();
+        if (string.IsNullOrWhiteSpace(authorization) || !authorization.StartsWith("Bearer "))
+        {
+            return Unauthorized(new { message = "Missing access token" });
+        }
+
+        var accessToken = authorization.Substring("Bearer ".Length).Trim();
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return Unauthorized(new { message = "Missing access token" });
+        }
+
+        var organizations = await _authenticationService.GetOrganizationsAsync(accessToken);
+        return Ok(organizations);
+    }
+
     [HttpGet("permissions/{userId}/{tenantId}")]
     public async Task<ActionResult<List<string>>> GetUserPermissions(Guid userId, Guid tenantId)
     {

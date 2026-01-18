@@ -13,6 +13,7 @@ public interface ITenantOrchestrationService
 {
     Task<string> CreateTenantAsync(CreateTenantModel model);
     Task<string> InviteUserToTenantAsync(InviteUserModel model);
+    Task InviteExistingUserToTenantAsync(UserTenantModel model);
 }
 
 public class TenantOrchestrationService : ITenantOrchestrationService
@@ -161,6 +162,74 @@ public class TenantOrchestrationService : ITenantOrchestrationService
 
             // Execute compensating transactions in reverse order
             await ExecuteInviteUserCompensatingTransactionsAsync(userId, userWasCreated, model.TenantId, databaseTransactionStarted);
+
+            throw;
+        }
+    }
+
+    public async Task InviteExistingUserToTenantAsync(UserTenantModel model)
+    {
+        _logger.LogInformation("Starting existing user invitation saga for tenant {TenantId}", model.TenantId);
+
+        var userId = model.UserId;
+        var tenantId = model.TenantId;
+        var databaseTransactionStarted = false;
+        var addedToOrganization = false;
+
+        try
+        {
+            var userRepresentation = await _kcUserService.GetUserByIdAsync(userId);
+
+            _logger.LogInformation("Saga Step 1: Linking user {UserId} to tenant {TenantId} in Keycloak", userId, tenantId);
+            await _kcOrganisationService.AddUserToOrganisationAsync(model);
+            addedToOrganization = true;
+
+            _logger.LogInformation("Saga Step 2: Persisting existing user invite to database");
+            await _unitOfWork.BeginTransactionAsync();
+            databaseTransactionStarted = true;
+
+            var inviteModel = new InviteUserModel
+            {
+                TenantId = tenantId,
+                Email = userRepresentation.Email ?? string.Empty,
+                FirstName = userRepresentation.FirstName ?? string.Empty,
+                LastName = userRepresentation.LastName ?? string.Empty
+            };
+
+            await PersistInvitedUserToDatabaseAsync(userRepresentation, inviteModel);
+            await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation("Saga completed successfully for existing user invitation {UserId} to tenant {TenantId}",
+                userId, tenantId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Saga failed for existing user invitation to tenant {TenantId}. Rolling back.", tenantId);
+
+            if (databaseTransactionStarted)
+            {
+                try
+                {
+                    await _unitOfWork.RollbackAsync();
+                }
+                catch (Exception rollbackEx)
+                {
+                    _logger.LogError(rollbackEx, "Failed to rollback database transaction for existing user invite");
+                }
+            }
+
+            if (addedToOrganization)
+            {
+                try
+                {
+                    await _kcOrganisationService.RemoveUserFromOrganisationAsync(userId, tenantId);
+                }
+                catch (Exception compensationEx)
+                {
+                    _logger.LogError(compensationEx,
+                        "Failed to remove user {UserId} from tenant {TenantId} after invite failure", userId, tenantId);
+                }
+            }
 
             throw;
         }
@@ -389,7 +458,12 @@ public class TenantOrchestrationService : ITenantOrchestrationService
                 }
             };
             await _unitOfWork.TenantUsers.AddAsync(tenantUser);
+            existingTenantUser = tenantUser;
+        }
 
+        var existingProfile = await _unitOfWork.TenantUserProfiles.GetByTenantUserIdAsync(existingTenantUser.Id);
+        if (existingProfile == null)
+        {
             // Create UserProfile with the user's name from Keycloak
             var userProfile = new UserProfile
             {
@@ -402,7 +476,7 @@ public class TenantOrchestrationService : ITenantOrchestrationService
             // Create TenantUserProfile linking the profile to this tenant-user relationship
             var tenantUserProfile = new TenantUserProfile
             {
-                TenantUserId = tenantUser.Id,
+                TenantUserId = existingTenantUser.Id,
                 UserProfileId = userProfile.Id
             };
             await _unitOfWork.TenantUserProfiles.AddAsync(tenantUserProfile);
